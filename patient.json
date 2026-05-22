@@ -1,0 +1,20 @@
+{
+  "resourceType": "Patient",
+  "id": "example",
+  "identifier": [
+    {
+      "system": "http://hospital.smarthealthit.org",
+      "value": "12345"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "use": "official",
+      "family": "Chalmers",
+      "given": ["Peter", "James"]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1974-12-25"
+}

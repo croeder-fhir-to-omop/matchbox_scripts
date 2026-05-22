@@ -1,0 +1,17 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "source",
+      "valueString": "http://hl7.org/fhir/uv/omop/StructureMap/PersonMap"
+    },
+    { "name": "resource",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "example",
+        "gender": "male",
+        "birthDate": "1974-12-25"
+      }
+    }
+  ]
+}
