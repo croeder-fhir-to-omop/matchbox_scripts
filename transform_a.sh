@@ -1,33 +1,30 @@
 #!/usr/bin/env bash
 # Pattern A: inline map via Parameters body
 # Both 'resource' and 'map' must be valueString (serialized strings), not embedded resources.
-# Python handles all escaping.
 
 PATIENT_FILE="patient.json"
 MAP_FILE="PersonMap.fml"
 BASE_URL="http://localhost:8080/matchboxv3/fhir"
 
-PARAMS=$(python3 - <<EOF
-import json
-
-with open("$PATIENT_FILE") as f:
-    patient = json.load(f)
-
-with open("$MAP_FILE") as f:
-    map_text = f.read()
-
-params = {
-    "resourceType": "Parameters",
-    "parameter": [
-        {"name": "resource", "valueString": json.dumps(patient, separators=(',', ':'))},
-        {"name": "map",      "valueString": map_text}
-    ]
+# Escape a file's contents for embedding as a JSON string value.
+# Handles: backslashes, double-quotes, newlines, carriage returns, tabs.
+json_escape() {
+    local s
+    s=$(cat "$1")
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
 }
-print(json.dumps(params))
-EOF
-)
+
+PATIENT_ESC=$(json_escape "$PATIENT_FILE")
+MAP_ESC=$(json_escape "$MAP_FILE")
+
+PARAMS="{\"resourceType\":\"Parameters\",\"parameter\":[{\"name\":\"resource\",\"valueString\":\"${PATIENT_ESC}\"},{\"name\":\"map\",\"valueString\":\"${MAP_ESC}\"}]}"
 
 curl -s -X POST "${BASE_URL}/StructureMap/\$transform" \
   -H "Content-Type: application/fhir+json" \
   -H "Accept: application/fhir+json" \
-  -d "$PARAMS" | python3 -m json.tool
+  -d "$PARAMS"
