@@ -38,6 +38,28 @@ output is a FHIR resource, but in the shape of an OMOP table.
   - transform_condition_fever.sh,  condition_fever.json
   - transform_condition.sh, condition_hypertension.json
 
+- Convert Transform Output to CSV
+`omop_to_csv.py` reads the JSON output of a transform script and emits
+a CSV row with the full set of OMOP column headers. It requires Python 3
+and dispatches automatically on `resourceType` (currently supports
+`ConditionOccurrence` and `Person`).
+
+  Pipe a single transform directly:
+  ```bash
+  bash transform_condition_fever.sh | python3 omop_to_csv.py
+  ```
+
+  Accumulate multiple records into one file:
+  ```bash
+  bash transform_condition_fever.sh | python3 omop_to_csv.py                   > conditions.csv
+  bash transform_condition.sh       | python3 omop_to_csv.py --no-header >> conditions.csv
+  ```
+
+  Or convert a saved JSON file:
+  ```bash
+  python3 omop_to_csv.py condition_fever_output.json
+  ```
+
 ## Getting Started on a Jupyter notebook on Google Colab (TBD)
 Running a public server involves taking on provisioning and deploying
 the hardware resources and restricted access to known and well behaved
@@ -73,8 +95,6 @@ be run. The server above is doing the heavy lifting.
   as arrange a download of (nearly) all the terms for local use.
 
 ## TBD
-- parsing the output OMOP-like FHIR resources into plain CSV that is 
-more similar to an OMOP relational database table row.
 - more fine-grained detail in these instructions
 
 
