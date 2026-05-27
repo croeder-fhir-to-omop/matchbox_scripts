@@ -1,0 +1,15 @@
+{
+  "resourceType": "Observation",
+  "id": "example-weight-int",
+  "status": "final",
+  "category": [
+    { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory" }] }
+  ],
+  "code": {
+    "coding": [{ "system": "http://loinc.org", "code": "29463-7", "display": "Body weight" }]
+  },
+  "subject": { "reference": "Patient/example" },
+  "encounter": { "reference": "Encounter/example" },
+  "effectiveDateTime": "2020-03-15",
+  "valueQuantity": { "value": 72, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg" }
+}

@@ -1,0 +1,17 @@
+{
+  "resourceType": "Immunization",
+  "id": "example-immunization-flu",
+  "status": "completed",
+  "vaccineCode": {
+    "coding": [{ "system": "http://hl7.org/fhir/sid/cvx", "code": "141", "display": "Influenza, seasonal, injectable" }]
+  },
+  "patient": { "reference": "Patient/example" },
+  "encounter": { "reference": "Encounter/example" },
+  "occurrenceDateTime": "2020-10-01",
+  "lotNumber": "AAJN11K",
+  "route": {
+    "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration", "code": "IM", "display": "Intramuscular" }]
+  },
+  "doseQuantity": { "value": 0.5, "unit": "mL", "system": "http://unitsofmeasure.org", "code": "mL" },
+  "informationSource": { "reference": "Patient/example" }
+}
