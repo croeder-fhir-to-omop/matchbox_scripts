@@ -4,7 +4,11 @@
 
 PATIENT_FILE="patient.json"
 MAP_FILE="PersonMap.fml"
-BASE_URL="http://localhost:8080/matchboxv3/fhir"
+if [ "$1" = "--standalone" ]; then
+  BASE_URL="http://localhost:8080/matchboxv3/fhir"
+else
+  BASE_URL="${MATCHBOX_URL:-http://matchbox:8080}/matchboxv3/fhir"
+fi
 
 # Escape a file's contents for embedding as a JSON string value.
 # Handles: backslashes, double-quotes, newlines, carriage returns, tabs.

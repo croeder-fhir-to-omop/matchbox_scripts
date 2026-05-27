@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Transform a completed Procedure — should produce an OMOP procedure_occurrence row
 
-BASE_URL="http://localhost:8080/matchboxv3/fhir"
+if [ "$1" = "--standalone" ]; then
+  BASE_URL="http://localhost:8080/matchboxv3/fhir"
+else
+  BASE_URL="${MATCHBOX_URL:-http://matchbox:8080}/matchboxv3/fhir"
+fi
 MAP_URL="http://hl7.org/fhir/uv/omop/StructureMap/ProcedureMap"
 
 curl -s -X POST "${BASE_URL}/StructureMap/\$transform?source=${MAP_URL}" \
