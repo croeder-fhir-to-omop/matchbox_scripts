@@ -7,4 +7,5 @@ MAP_URL="http://hl7.org/fhir/uv/omop/StructureMap/PersonMap"
 curl -s -X POST "${BASE_URL}/StructureMap/\$transform?source=${MAP_URL}" \
   -H "Content-Type: application/fhir+json" \
   -H "Accept: application/fhir+json" \
-  -d @patient.json
+  -d @patient.json |\
+python3 omop_to_csv.py

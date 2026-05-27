@@ -1,0 +1,14 @@
+{
+  "resourceType": "Procedure",
+  "id": "example-procedure-completed",
+  "status": "completed",
+  "category": {
+    "coding": [{ "system": "http://snomed.info/sct", "code": "387713003", "display": "Surgical procedure" }]
+  },
+  "code": {
+    "coding": [{ "system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy" }]
+  },
+  "subject": { "reference": "Patient/example" },
+  "encounter": { "reference": "Encounter/example" },
+  "performedDateTime": "2020-03-15"
+}
