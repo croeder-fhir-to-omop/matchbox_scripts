@@ -2,6 +2,16 @@
 
 Python scripts and sample FHIR fixtures for the FHIR→OMOP pipeline. Used directly by `jupyter_docker` (interactive exploration) and `dqd_docker` (automated ETL + Data Quality Dashboard).
 
+Part of the [croeder-fhir-to-omop](https://github.com/croeder-fhir-to-omop) FHIR→OMOP pipeline:
+
+| Repo | Role |
+|---|---|
+| [matchbox](https://github.com/croeder-fhir-to-omop/matchbox) | FHIR server with OMOP IG (fork of ahdis/matchbox) |
+| [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker) | Docker config and IGs for matchbox |
+| **[matchbox_scripts](https://github.com/croeder-fhir-to-omop/matchbox_scripts)** | **Transform functions, ETL script, and FHIR fixtures ← you are here** |
+| [jupyter_docker](https://github.com/croeder-fhir-to-omop/jupyter_docker) | Interactive Jupyter notebook environment |
+| [dqd_docker](https://github.com/croeder-fhir-to-omop/dqd_docker) | Automated ETL + OHDSI Data Quality Dashboard |
+
 ## Main scripts
 
 | Script | Description |
