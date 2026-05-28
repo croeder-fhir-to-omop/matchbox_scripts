@@ -11,6 +11,7 @@ from pathlib import Path
 
 import duckdb
 
+from omop_to_csv import COLUMNS as OMOP_COLUMNS
 from transforms import (
     transform_allergy,
     transform_condition,
@@ -52,25 +53,31 @@ def load_ddl(con):
         sql = (DDL_DIR / name).read_text()
         sql = sql.replace('@cdmDatabaseSchema.', '')
         for statement in sql.split(';'):
-            statement = statement.strip()
-            if statement and not statement.startswith('--'):
+            lines = [l for l in statement.splitlines() if not l.strip().startswith('--')]
+            statement = '\n'.join(lines).strip()
+            if statement:
                 try:
                     con.execute(statement)
-                except duckdb.CatalogException:
+                except (duckdb.CatalogException, duckdb.NotImplementedException):
                     pass
 
 
 def insert(con, table, row):
     if not row:
-        return
+        return False
     cols = [k for k, v in row.items() if v != '' and v is not None]
     vals = [row[c] for c in cols]
     placeholders = ', '.join(['?'] * len(cols))
     col_list = ', '.join(cols)
-    con.execute(
-        f'INSERT OR IGNORE INTO {table} ({col_list}) VALUES ({placeholders})',
-        vals,
-    )
+    try:
+        con.execute(
+            f'INSERT OR IGNORE INTO {table} ({col_list}) VALUES ({placeholders})',
+            vals,
+        )
+        return True
+    except (duckdb.ConstraintException, duckdb.ConversionException) as e:
+        print(f'  WARN insert into {table}: {e}', file=sys.stderr)
+        return False
 
 
 def run():
@@ -79,6 +86,18 @@ def run():
 
     print('Loading OMOP CDM 5.4 schema...')
     load_ddl(con)
+
+    con.execute("""
+        INSERT INTO cdm_source (
+            cdm_source_name, cdm_source_abbreviation, cdm_holder,
+            source_release_date, cdm_release_date,
+            cdm_version, cdm_version_concept_id, vocabulary_version
+        ) VALUES (
+            'FHIR-OMOP Demo', 'FHIR-OMOP', 'Demo',
+            '2024-01-01', '2024-01-01',
+            '5.4', 756265, 'v5.0 22-JUN-22'
+        )
+    """)
 
     for pattern, transform_fn, table in FIXTURE_TRANSFORMS:
         paths = sorted(SCRIPTS_DIR.glob(pattern))
@@ -92,8 +111,14 @@ def run():
             if result is None:
                 print(f'  SUPPRESSED {path.name}')
                 continue
-            insert(con, table, result)
-            print(f'  OK {path.name} -> {table}')
+            resource_type = result.get('resourceType')
+            cols = OMOP_COLUMNS.get(resource_type)
+            if cols is None:
+                print(f'  SKIP {path.name}: unknown resourceType {resource_type!r}', file=sys.stderr)
+                continue
+            row = {c: result.get(c) for c in cols}
+            if insert(con, table, row):
+                print(f'  OK {path.name} -> {table}')
 
     con.close()
     print(f'Done. Database written to {DB_PATH}')
