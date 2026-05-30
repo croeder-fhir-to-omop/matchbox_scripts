@@ -140,7 +140,7 @@ def phase_concurrent(cases, total_calls, workers):
     """Dispatch total_calls across workers threads, cycling through fixtures."""
     print(f"\n── Phase 3: Concurrent throughput ({total_calls} calls, {workers} workers) ──")
     work = [cases[i % len(cases)] for i in range(total_calls)]
-    errors, times = 0, []
+    errors, times, first_error = 0, [], None
     t_start = time.perf_counter()
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futs = [pool.submit(_timed, fn, resource) for resource, fn, _ in work]
@@ -148,11 +148,15 @@ def phase_concurrent(cases, total_calls, workers):
             _, elapsed, err = f.result()
             if err:
                 errors += 1
+                if first_error is None:
+                    first_error = err
             else:
                 times.append(elapsed)
     wall = time.perf_counter() - t_start
     rps = len(times) / wall if wall > 0 else 0
     print(f"  Completed: {len(times)}/{total_calls}  errors: {errors}")
+    if first_error:
+        print(f"  First error: {first_error}")
     print(f"  Wall time: {wall:.1f}s  →  {rps:.1f} transforms/sec")
     if times:
         s = sorted(times)
