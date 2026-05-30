@@ -71,13 +71,22 @@ CASES = [
 
 
 def _timed(fn, resource):
-    """Call fn(resource), return (result, elapsed_seconds, error_string|None)."""
+    """Call fn(resource), return (result, elapsed_seconds, error_string|None).
+
+    Retries once on connection reset/aborted errors, which occur when the
+    server closes a stale keep-alive connection that requests tries to reuse.
+    """
     t0 = time.perf_counter()
-    try:
-        result = fn(resource)
-        return result, time.perf_counter() - t0, None
-    except Exception as e:
-        return None, time.perf_counter() - t0, str(e).split("\n")[0]
+    last_err = None
+    for _ in range(2):
+        try:
+            result = fn(resource)
+            return result, time.perf_counter() - t0, None
+        except Exception as e:
+            last_err = str(e).split("\n")[0]
+            if not any(kw in str(e).lower() for kw in ("reset", "aborted", "broken pipe")):
+                break  # not a connection error — don't retry
+    return None, time.perf_counter() - t0, last_err
 
 
 def load_cases():
