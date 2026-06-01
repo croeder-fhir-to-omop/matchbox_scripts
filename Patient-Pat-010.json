@@ -1,0 +1,14 @@
+{
+  "resourceType": "Patient",
+  "id": "Pat-010",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-010",
+        "display": "Primary: Pat-010 (gender element absent; gender_concept_id=0, not NULL)."
+      }
+    ]
+  },
+  "birthDate": "1972-04-08"
+}

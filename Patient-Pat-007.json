@@ -1,0 +1,15 @@
+{
+  "resourceType": "Patient",
+  "id": "Pat-007",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-007",
+        "display": "Primary: Pat-007 (gender=female; gender_concept_id=8532)."
+      }
+    ]
+  },
+  "gender": "female",
+  "birthDate": "1980-07-04"
+}

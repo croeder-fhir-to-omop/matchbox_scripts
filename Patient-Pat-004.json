@@ -1,0 +1,16 @@
+{
+  "resourceType": "Patient",
+  "id": "Pat-004",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-004",
+        "display": "Primary: Pat-004 (deceasedDateTime date precision; death_date SET, death_datetime NULL)."
+      }
+    ]
+  },
+  "gender": "female",
+  "birthDate": "1942-06-12",
+  "deceasedDateTime": "2024-11-03"
+}

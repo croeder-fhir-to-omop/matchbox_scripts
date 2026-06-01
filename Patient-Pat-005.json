@@ -1,0 +1,16 @@
+{
+  "resourceType": "Patient",
+  "id": "Pat-005",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-005",
+        "display": "Primary: Pat-005 (deceasedDateTime dateTime precision; both death_date and death_datetime SET)."
+      }
+    ]
+  },
+  "gender": "female",
+  "birthDate": "1955-09-22",
+  "deceasedDateTime": "2025-02-14T03:17:00-05:00"
+}

@@ -1,0 +1,50 @@
+{
+  "resourceType": "Patient",
+  "id": "Pat-002",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-002",
+        "display": "Primary: Pat-002 (birthDate dateTime precision via patient-birthTime extension). Also covers: Pat-006, Pat-011, Pat-012, Pat-013."
+      }
+    ]
+  },
+  "identifier": [
+    {
+      "use": "usual",
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+            "code": "MR",
+            "display": "Medical record number"
+          }
+        ]
+      },
+      "system": "http://acme.org/identifiers/mrn",
+      "value": "MRN-00001"
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1974-03-15",
+  "_birthDate": {
+    "extension": [
+      {
+        "url": "http://hl7.org/fhir/StructureDefinition/patient-birthTime",
+        "valueDateTime": "1974-03-15T08:30:00-05:00"
+      }
+    ]
+  },
+  "address": [
+    {
+      "use": "home",
+      "type": "physical",
+      "line": ["123 Test Avenue"],
+      "city": "Pittsburgh",
+      "state": "PA",
+      "postalCode": "15213",
+      "country": "US"
+    }
+  ]
+}
