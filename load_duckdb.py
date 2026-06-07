@@ -29,10 +29,13 @@ SCRIPTS_DIR = Path(__file__).parent
 DDL_DIR = SCRIPTS_DIR / 'ddl'
 DB_PATH = os.environ.get('OMOP_DB_PATH', '/omop/omop.ddb')
 REPORT_PATH = os.path.join(os.path.dirname(DB_PATH), 'etl_report.html')
+IG_VERSION = os.environ.get('OMOP_IG_VERSION', '1.0.1')
 
 FIXTURE_TRANSFORMS = [
+    # pattern, transform_fn, table, map_name
     ('condition_*.json',      transform_condition,   'condition_occurrence', 'ConditionMap'),
     ('patient*.json',         transform_patient,     'person',               'PersonMap'),
+    ('Patient-Pat-*.json',   transform_patient,     'person',               'PersonMap'),
     ('procedure_*.json',      transform_procedure,   'procedure_occurrence', 'ProcedureMap'),
     ('allergy_*.json',        transform_allergy,     'observation',          'AllergyMap'),
     ('encounter_*.json',      transform_encounter,   'visit_occurrence',     'EncounterVisitMap'),
@@ -94,7 +97,7 @@ def _root_cause(detail):
         return ''
     if 'NOT NULL constraint' in detail:
         field = detail.split('.')[-1] if '.' in detail else detail
-        return (f'StructureMap (OMOP IG v1.0.0) does not populate <code>{field}</code> — '
+        return (f'StructureMap (OMOP IG v{IG_VERSION}) does not populate <code>{field}</code> — '
                 f'concept_id translation is not implemented in the map; '
                 f'requires vocabulary lookup not present in current StructureMap logic.')
     if 'Could not convert string' in detail:
@@ -118,8 +121,8 @@ def write_report(results):
         root = _root_cause(detail)
         rows_html += (
             f'<tr>'
-            f'<td>{r["file"]}</td>'
-            f'<td><code>{r.get("map","")}</code></td>'
+            f'<td><a href="fixtures/{r["file"]}">{r["file"]}</a></td>'
+            f'<td><a href="https://hl7.org/fhir/uv/omop/StructureMap-{r.get("map","")}.html" target="_blank"><code>{r.get("map","")}</code></a></td>'
             f'<td>{r.get("table","")}</td>'
             f'<td style="color:{color};font-weight:bold">{r["status"]}</td>'
             f'<td style="font-size:0.85em;color:#555">{root}</td>'
@@ -147,7 +150,7 @@ def write_report(results):
 <h1>FHIR &rarr; OMOP ETL Report</h1>
 <p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
 <div class="note">
-  <strong>Known limitation — OMOP IG StructureMaps v1.0.0:</strong>
+  <strong>Known limitation — OMOP IG StructureMaps v{IG_VERSION}:</strong>
   The StructureMaps translate FHIR field <em>structure</em> to OMOP field names
   but do not implement concept_id translation. FHIR gender, LOINC, SNOMED, and
   RxNorm codes are not resolved to OMOP integer concept_ids by the maps.
@@ -181,7 +184,7 @@ def run():
         ) VALUES (
             'FHIR-OMOP Demo', 'FHIR-OMOP', 'Demo',
             '2024-01-01', '2024-01-01',
-            '5.4', 756265, 'v5.0 22-JUN-22'
+            'v5.4', 0, 'n/a'
         )
     """)
 
