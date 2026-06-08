@@ -4,6 +4,7 @@ Unit tests for load_duckdb.py report generation.
 Does not require a running matchbox server or DuckDB file.
 """
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -94,3 +95,47 @@ class TestWriteReportCsvSection:
         assert '<h2>Output Tables' not in html, (
             'Expected single-table design — no separate Output Tables section'
         )
+
+    def test_WHEN_csv_rows_given_view_link_SHOULD_point_to_html_not_csv(self):
+        html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
+        assert 'csv/person.html' in html, (
+            'View link should point to csv/person.html (HTML viewer), not the raw CSV'
+        )
+
+    def test_WHEN_csv_rows_given_download_link_SHOULD_point_to_csv(self):
+        html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
+        assert 'csv/person.csv' in html, (
+            'Download link should still point to csv/person.csv'
+        )
+
+
+class TestWriteCsvs:
+    """write_csvs should produce both a .csv file and a .html viewer page per table."""
+
+    def test_WHEN_write_csvs_called_SHOULD_create_html_viewer_for_each_table(self):
+        rows = {'person': [{'person_id': 1, 'gender_concept_id': 8507},
+                            {'person_id': 2, 'gender_concept_id': 8532}]}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(load_duckdb, 'CSV_DIR', Path(tmpdir)):
+                load_duckdb.write_csvs(rows)
+            viewer = Path(tmpdir) / 'person.html'
+            assert viewer.exists(), 'Expected person.html viewer to be written alongside person.csv'
+
+    def test_WHEN_write_csvs_called_html_viewer_SHOULD_contain_data_rows(self):
+        rows = {'person': [{'person_id': 1, 'gender_concept_id': 8507},
+                            {'person_id': 2, 'gender_concept_id': 8532}]}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(load_duckdb, 'CSV_DIR', Path(tmpdir)):
+                load_duckdb.write_csvs(rows)
+            html = (Path(tmpdir) / 'person.html').read_text()
+            assert '8507' in html, 'Expected gender_concept_id value in viewer HTML'
+            assert '8532' in html
+
+    def test_WHEN_write_csvs_called_html_viewer_SHOULD_have_column_headers(self):
+        rows = {'person': [{'person_id': 1, 'gender_concept_id': 8507}]}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(load_duckdb, 'CSV_DIR', Path(tmpdir)):
+                load_duckdb.write_csvs(rows)
+            html = (Path(tmpdir) / 'person.html').read_text()
+            assert 'person_id' in html
+            assert 'gender_concept_id' in html

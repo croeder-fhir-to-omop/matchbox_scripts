@@ -131,7 +131,7 @@ def write_report(results, csv_rows=None):
         if table_csv:
             n = len(table_csv)
             csv_cell = (
-                f'<a href="csv/{table}.csv" target="_blank">{n}&nbsp;rows</a>'
+                f'<a href="csv/{table}.html" target="_blank">{n}&nbsp;rows</a>'
                 f'&nbsp;<a href="csv/{table}.csv" download>&#8595;dl</a>'
             )
         else:
@@ -188,6 +188,33 @@ def write_report(results, csv_rows=None):
     return html
 
 
+def _csv_viewer_html(table, rows):
+    cols = list(rows[0].keys())
+    headers = ''.join(f'<th>{c}</th>' for c in cols)
+    body = ''
+    for row in rows:
+        cells = ''.join(f'<td>{row.get(c, "")}</td>' for c in cols)
+        body += f'<tr>{cells}</tr>\n'
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>{table}</title>
+<style>
+  body {{ font-family: monospace; margin: 1em; background: #f9f9f9; }}
+  h1 {{ font-size: 1.1em; color: #333; }}
+  table {{ border-collapse: collapse; background: #fff; }}
+  th {{ background: #333; color: #fff; padding: 4px 10px; text-align: left; }}
+  td {{ padding: 3px 10px; border-bottom: 1px solid #ddd; white-space: nowrap; }}
+  tr:hover {{ background: #f0f0f0; }}
+  .dl {{ float: right; font-size: 0.9em; }}
+</style>
+</head><body>
+<h1>{table} <span class="dl"><a href="{table}.csv" download>&#8595; download CSV</a></span></h1>
+<p>{len(rows)} rows</p>
+<table><tr>{headers}</tr>
+{body}</table>
+</body></html>"""
+
+
 def write_csvs(csv_rows):
     CSV_DIR.mkdir(parents=True, exist_ok=True)
     for table, rows in csv_rows.items():
@@ -198,6 +225,7 @@ def write_csvs(csv_rows):
             writer = csv.DictWriter(f, fieldnames=rows[0].keys())
             writer.writeheader()
             writer.writerows(rows)
+        (CSV_DIR / f'{table}.html').write_text(_csv_viewer_html(table, rows))
         print(f'  CSV {out} ({len(rows)} rows)')
     print(f'CSV files written to {CSV_DIR}')
 
