@@ -3,6 +3,7 @@ Load all FHIR fixture JSON files through matchbox transforms and insert into
 an OMOP CDM 5.4 DuckDB database.
 """
 
+import csv
 import json
 import os
 import sys
@@ -28,6 +29,7 @@ from transforms import (
 SCRIPTS_DIR = Path(__file__).parent
 DDL_DIR = SCRIPTS_DIR / 'ddl'
 DB_PATH = os.environ.get('OMOP_DB_PATH', '/omop/omop.ddb')
+CSV_DIR = Path(os.environ.get('OMOP_CSV_DIR', str(Path(DB_PATH).parent / 'csv')))
 REPORT_PATH = os.path.join(os.path.dirname(DB_PATH), 'etl_report.html')
 IG_VERSION = os.environ.get('OMOP_IG_VERSION', '1.0.1')
 
@@ -172,10 +174,25 @@ def write_report(results):
     print(f'ETL report written to {REPORT_PATH}')
 
 
+def write_csvs(csv_rows):
+    CSV_DIR.mkdir(parents=True, exist_ok=True)
+    for table, rows in csv_rows.items():
+        if not rows:
+            continue
+        out = CSV_DIR / f'{table}.csv'
+        with out.open('w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+        print(f'  CSV {out} ({len(rows)} rows)')
+    print(f'CSV files written to {CSV_DIR}')
+
+
 def run():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     con = duckdb.connect(DB_PATH)
     results = []
+    csv_rows: dict[str, list] = {}
 
     print('Loading OMOP CDM 5.4 schema...')
     load_ddl(con)
@@ -219,11 +236,13 @@ def run():
             if ok:
                 print(f'  OK {path.name} -> {table}')
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'OK'})
+                csv_rows.setdefault(table, []).append(row)
             else:
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'WARN', 'detail': err})
 
     con.close()
     print(f'Done. Database written to {DB_PATH}')
+    write_csvs(csv_rows)
     write_report(results)
 
 
