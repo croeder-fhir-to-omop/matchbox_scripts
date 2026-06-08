@@ -9,6 +9,9 @@ Issues:
   fhir-omop-ig#2      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/2
   fhir-omop-ig#3      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/3
   fhir-omop-ig#4      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/4
+  fhir-omop-ig#6      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/6
+  fhir-omop-ig#7      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/7
+  fhir-omop-ig#8      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/8
 """
 import os
 import pytest
@@ -366,4 +369,107 @@ class TestMeasurementMapUnit:
         assert result is not None
         assert result.get('unit_source_value') == 'kg', (
             f"Expected unit_source_value='kg', got {result.get('unit_source_value')!r}"
+        )
+
+
+VITAL_SIGN_TEMPERATURE = {
+    "resourceType": "Observation",
+    "id": "test-temp",
+    "status": "final",
+    "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
+    "code": {"coding": [{"system": "http://loinc.org", "code": "8310-5", "display": "Body temperature"}]},
+    "subject": {"reference": "Patient/test"},
+    "effectiveDateTime": "2020-03-15T09:00:00Z",
+    "valueQuantity": {"value": 37.2, "unit": "Cel", "system": "http://unitsofmeasure.org", "code": "Cel"},
+}
+
+VITAL_SIGN_WEIGHT = {
+    "resourceType": "Observation",
+    "id": "test-weight-vs",
+    "status": "final",
+    "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
+    "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]},
+    "subject": {"reference": "Patient/test"},
+    "effectiveDateTime": "2020-03-15T09:00:00Z",
+    "valueQuantity": {"value": 72.5, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"},
+}
+
+
+class TestSimpleVitalSignsMapUnit:
+    """fhir-omop-ig#7 — SimpleVitalSignsMap must not write UCUM string to unit_concept_id (INT).
+
+    's.unit as b -> tgt.unit_concept_id = b' puts e.g. 'Cel' into an INT32 column,
+    causing a DuckDB Conversion Error on insert. Fix: route to unit_source_value.
+    """
+
+    def test_WHEN_vital_sign_has_unit_Cel_SHOULD_not_put_string_in_unit_concept_id(self):
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        uid = result.get('unit_concept_id')
+        assert uid is None or str(uid).isdigit(), (
+            f"unit_concept_id must be absent or an integer, got {uid!r} — "
+            "SimpleVitalSignsMap still writes UCUM string to unit_concept_id"
+        )
+
+    def test_WHEN_vital_sign_has_unit_Cel_SHOULD_produce_unit_source_value_Cel(self):
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        assert result.get('unit_source_value') == 'Cel', (
+            f"Expected unit_source_value='Cel', got {result.get('unit_source_value')!r}"
+        )
+
+    def test_WHEN_vital_sign_has_unit_kg_SHOULD_produce_unit_source_value_kg(self):
+        result = transform(VITAL_SIGN_WEIGHT, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        assert result.get('unit_source_value') == 'kg', (
+            f"Expected unit_source_value='kg', got {result.get('unit_source_value')!r}"
+        )
+
+
+PROCEDURE_WITH_DATETIME = {
+    "resourceType": "Procedure",
+    "id": "test-proc-type",
+    "status": "completed",
+    "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
+    "subject": {"reference": "Patient/test"},
+    "performedDateTime": "2020-03-15T10:00:00Z",
+}
+
+
+class TestProcedureMapTypeConceptId:
+    """fhir-omop-ig#6 — ProcedureMap must set procedure_type_concept_id (NOT NULL in OMOP CDM 5.4).
+
+    Without a default, every insert into procedure_occurrence fails with:
+    'NOT NULL constraint failed: procedure_occurrence.procedure_type_concept_id'
+    Fix: add tgt.procedure_type_concept_id = 32817 (EHR) to the src.id rule.
+    """
+
+    def test_WHEN_procedure_is_transformed_SHOULD_produce_procedure_type_concept_id(self):
+        result = transform(PROCEDURE_WITH_DATETIME, 'ProcedureMap')
+        assert result is not None, 'ProcedureMap returned OperationOutcome'
+        assert result.get('procedure_type_concept_id') is not None, (
+            "Expected procedure_type_concept_id to be set (NOT NULL in OMOP CDM 5.4), got None"
+        )
+
+    def test_WHEN_procedure_is_transformed_SHOULD_produce_procedure_type_concept_id_32817(self):
+        result = transform(PROCEDURE_WITH_DATETIME, 'ProcedureMap')
+        assert result is not None
+        assert result.get('procedure_type_concept_id') == '32817', (
+            f"Expected procedure_type_concept_id=32817 (EHR), got {result.get('procedure_type_concept_id')!r}"
+        )
+
+
+class TestSimpleVitalSignsMeasurementId:
+    """fhir-omop-ig#8 — SimpleVitalSignsMap must set measurement_id (NOT NULL in OMOP CDM 5.4).
+
+    The map has no src.id rule, leaving measurement_id unset. Every insert fails with:
+    'NOT NULL constraint failed: measurement.measurement_id'
+    Fix: add src.id -> tgt.measurement_id = 1 to the Measures group.
+    """
+
+    def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_id(self):
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        assert result.get('measurement_id') is not None, (
+            "Expected measurement_id to be set (NOT NULL in OMOP CDM 5.4), got None"
         )
