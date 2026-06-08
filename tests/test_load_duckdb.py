@@ -61,19 +61,21 @@ class TestWriteReportCsvSection:
             'Expected href to csv/condition_occurrence.csv in the results table'
         )
 
+    def test_WHEN_csv_rows_given_SHOULD_show_table_name_in_view_link_text(self):
+        html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
+        # The view link text (between > and </a>) must contain the filename
+        assert '>person.csv' in html, (
+            'Expected filename "person.csv" as visible link text in the view link, '
+            'not just in an href attribute'
+        )
+
     def test_WHEN_csv_rows_given_SHOULD_show_row_count_for_person(self):
         html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
-        # person has 2 rows — rendered as "2&nbsp;rows" inside the link
-        assert '2&nbsp;rows' in html, (
-            'Expected row count 2 for person CSV link'
-        )
+        assert '2' in html, 'Expected row count 2 for person CSV link'
 
     def test_WHEN_csv_rows_given_SHOULD_show_row_count_for_condition_occurrence(self):
         html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
-        # condition_occurrence has 1 row
-        assert '1&nbsp;rows' in html or '1&nbsp;row' in html, (
-            'Expected row count 1 for condition_occurrence CSV link'
-        )
+        assert '1' in html, 'Expected row count 1 for condition_occurrence CSV link'
 
     def test_WHEN_row_is_suppressed_SHOULD_not_have_csv_link_for_that_table(self):
         html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)

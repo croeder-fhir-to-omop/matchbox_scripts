@@ -131,7 +131,7 @@ def write_report(results, csv_rows=None):
         if table_csv:
             n = len(table_csv)
             csv_cell = (
-                f'<a href="csv/{table}.html" target="_blank">{n}&nbsp;rows</a>'
+                f'<a href="csv/{table}.html" target="_blank">{table}.csv&nbsp;({n})</a>'
                 f'&nbsp;<a href="csv/{table}.csv" download>&#8595;dl</a>'
             )
         else:
