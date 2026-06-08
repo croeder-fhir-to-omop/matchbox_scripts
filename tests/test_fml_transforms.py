@@ -3,7 +3,12 @@ Integration tests for FHIR→OMOP StructureMap transforms via matchbox server.
 
 Requires a running matchbox server (MATCHBOX_URL env var or default http://localhost:8080).
 
-Issue: https://github.com/croeder-fhir-to-omop/matchbox_scripts/issues/1
+Issues:
+  matchbox_scripts#1  https://github.com/croeder-fhir-to-omop/matchbox_scripts/issues/1
+  fhir-omop-ig#1      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/1
+  fhir-omop-ig#2      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/2
+  fhir-omop-ig#3      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/3
+  fhir-omop-ig#4      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/4
 """
 import os
 import pytest
@@ -81,6 +86,52 @@ OBSERVATION_LABORATORY = {
     "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]},
     "subject": {"reference": "Patient/test"},
     "encounter": {"reference": "Encounter/test"},
+    "effectiveDateTime": "2020-03-15",
+    "valueQuantity": {"value": 72.5, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"},
+}
+
+
+PROCEDURE_DATETIME = {
+    "resourceType": "Procedure",
+    "id": "test-procedure-dt",
+    "status": "completed",
+    "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
+    "subject": {"reference": "Patient/test"},
+    # R4: performed[x] (renamed to occurrence[x] in R5)
+    "performedDateTime": "2020-03-15T10:00:00Z",
+}
+
+PROCEDURE_PERIOD = {
+    "resourceType": "Procedure",
+    "id": "test-procedure-period",
+    "status": "completed",
+    "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
+    "subject": {"reference": "Patient/test"},
+    # R4: performed[x] as Period (renamed to occurrence[x] in R5)
+    "performedPeriod": {"start": "2020-03-15T10:00:00Z", "end": "2020-03-15T11:00:00Z"},
+}
+
+OBSERVATION_SMOKING = {
+    "resourceType": "Observation",
+    "id": "test-smoking",
+    "status": "final",
+    "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "social-history"}]}],
+    "code": {"coding": [{"system": "http://loinc.org", "code": "72166-2", "display": "Tobacco smoking status"}]},
+    "subject": {"reference": "Patient/test"},
+    "effectiveDateTime": "2020-03-15",
+    # valueCodeableConcept — triggers the undefined variable 'b' bug in ObservationMap
+    "valueCodeableConcept": {
+        "coding": [{"system": "http://snomed.info/sct", "code": "266919005", "display": "Never smoked tobacco"}]
+    },
+}
+
+OBSERVATION_WITH_UNIT = {
+    "resourceType": "Observation",
+    "id": "test-obs-unit",
+    "status": "final",
+    "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}],
+    "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]},
+    "subject": {"reference": "Patient/test"},
     "effectiveDateTime": "2020-03-15",
     "valueQuantity": {"value": 72.5, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"},
 }
@@ -189,3 +240,93 @@ class TestMeasurementMap:
         if result is None:
             pytest.skip('MeasurementMap returned OperationOutcome')
         assert result.get('measurement_id') is not None
+
+
+class TestPersonMapRaceEthnicity:
+    """fhir-omop-ig#1 — PersonMap must default race_concept_id and ethnicity_concept_id to 0.
+
+    OMOP CDM 5.4 requires both fields as NOT NULL integers. When the source Patient
+    has no race/ethnicity (plain R4 Patient, no US Core extensions), the map must
+    emit 0 (OMOP 'Unknown') rather than leaving the fields absent.
+    """
+
+    def test_WHEN_patient_has_no_race_SHOULD_produce_race_concept_id_0(self):
+        result = transform(PATIENT_MALE, 'PersonMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('race_concept_id') == '0', (
+            f"Expected race_concept_id='0', got {result.get('race_concept_id')!r}"
+        )
+
+    def test_WHEN_patient_has_no_ethnicity_SHOULD_produce_ethnicity_concept_id_0(self):
+        result = transform(PATIENT_MALE, 'PersonMap')
+        assert result is not None
+        assert result.get('ethnicity_concept_id') == '0', (
+            f"Expected ethnicity_concept_id='0', got {result.get('ethnicity_concept_id')!r}"
+        )
+
+
+class TestProcedureMap:
+    """fhir-omop-ig#2 — ProcedureMap must use R4 field name 'performed' not R5 'occurrence'.
+
+    In R4, Procedure.performed[x] holds the date. The FML uses src.occurrence which
+    is the R5 rename — it matches nothing on an R4 server, leaving procedure_date null.
+    """
+
+    def test_WHEN_procedure_has_performedDateTime_SHOULD_produce_procedure_date(self):
+        result = transform(PROCEDURE_DATETIME, 'ProcedureMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('procedure_date') is not None, (
+            f"Expected non-null procedure_date, got None — ProcedureMap may still use R5 'occurrence' field"
+        )
+
+    def test_WHEN_procedure_has_performedPeriod_SHOULD_produce_procedure_date(self):
+        result = transform(PROCEDURE_PERIOD, 'ProcedureMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('procedure_date') is not None, (
+            f"Expected non-null procedure_date from performedPeriod, got None"
+        )
+
+
+class TestObservationMap:
+    """fhir-omop-ig#3 — ObservationMap valueCodeableConcept branch uses undefined variable 'b'.
+
+    The translate(b, '', 'code') call references 'b' from a different branch scope,
+    causing matchbox to return 500. Fix is translate(a, '', 'code').
+    """
+
+    def test_WHEN_observation_has_valueCodeableConcept_SHOULD_not_error(self):
+        result = transform(OBSERVATION_SMOKING, 'ObservationMap')
+        assert result is not None, (
+            'ObservationMap returned OperationOutcome — likely 500 from undefined variable b'
+        )
+
+    def test_WHEN_observation_has_valueCodeableConcept_SHOULD_have_observation_id(self):
+        result = transform(OBSERVATION_SMOKING, 'ObservationMap')
+        assert result is not None
+        assert result.get('observation_id') is not None, (
+            f"Expected observation_id to be set, got None"
+        )
+
+
+class TestMeasurementMapUnit:
+    """fhir-omop-ig#4 — MeasurementMap must not write unit string to integer unit_concept_id.
+
+    's.unit as b -> tgt.unit_concept_id = b' puts the UCUM string ('kg') into an
+    integer column. Fix: route unit string to unit_source_value, leave unit_concept_id absent.
+    """
+
+    def test_WHEN_observation_has_unit_SHOULD_not_put_string_in_unit_concept_id(self):
+        result = transform(OBSERVATION_WITH_UNIT, 'MeasurementMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        uid = result.get('unit_concept_id')
+        assert uid is None or str(uid).isdigit(), (
+            f"unit_concept_id must be an integer or absent, got {uid!r} — "
+            "MeasurementMap may still write the UCUM string directly"
+        )
+
+    def test_WHEN_observation_has_unit_kg_SHOULD_produce_unit_source_value_kg(self):
+        result = transform(OBSERVATION_WITH_UNIT, 'MeasurementMap')
+        assert result is not None
+        assert result.get('unit_source_value') == 'kg', (
+            f"Expected unit_source_value='kg', got {result.get('unit_source_value')!r}"
+        )
