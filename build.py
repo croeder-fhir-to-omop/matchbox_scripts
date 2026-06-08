@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Build pipeline: IG → Docker image → restart → tests.
+Build pipeline: IG → Docker image → restart → tests → release.
 
 Usage:
-  python3 build.py                    # full pipeline
-  python3 build.py ig                 # rebuild IG only
-  python3 build.py docker             # rebuild Docker image only
-  python3 build.py restart            # restart dqd_docker (wipes matchbox-db)
-  python3 build.py test               # run tests only
-  python3 build.py ig docker restart test  # explicit step list
+  python3 build.py                         # full pipeline (ig docker restart test)
+  python3 build.py ig                      # rebuild IG only
+  python3 build.py docker                  # rebuild matchbox Docker image only
+  python3 build.py restart                 # restart dqd_docker (wipes matchbox-db)
+  python3 build.py test                    # run tests only
+  python3 build.py release                 # build and push both images to Docker Hub
+  python3 build.py ig docker restart test release  # explicit step list
 """
 
 import subprocess
@@ -27,7 +28,8 @@ MATCHBOX_SRC  = REPO_ROOT / 'matchbox' / 'matchbox-server'
 PYTEST        = SCRIPTS_DIR / 'env' / 'bin' / 'pytest'
 DQD_COMPOSE   = ['docker', 'compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.matchbox-dev.yml']
 
-STEPS = ['ig', 'docker', 'restart', 'test']
+STEPS = ['ig', 'docker', 'restart', 'test', 'release']
+DEFAULT_STEPS = ['ig', 'docker', 'restart', 'test']
 
 
 def run(cmd, cwd=None, check=True):
@@ -52,13 +54,17 @@ def step_ig():
 
 def step_docker():
     print('\n=== Building croeder/matchbox:latest Docker image ===')
-    run([
-        'docker', 'build',
-        '-f', MATCHBOX_DIR / 'Dockerfile',
-        '--platform', 'linux/arm64',
-        '-t', 'croeder/matchbox:latest',
-        str(MATCHBOX_SRC),
-    ])
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=MATCHBOX_DIR)
+
+
+def step_release():
+    print('\n=== Building and pushing all release images ===')
+    print('--- matchbox ---')
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=MATCHBOX_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=MATCHBOX_DIR)
+    print('--- dqd ---')
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=DQD_DIR)
 
 
 def step_restart():
@@ -83,11 +89,12 @@ STEP_FNS = {
     'docker':  step_docker,
     'restart': step_restart,
     'test':    step_test,
+    'release': step_release,
 }
 
 
 def main():
-    args = sys.argv[1:] or STEPS
+    args = sys.argv[1:] or DEFAULT_STEPS
     unknown = [a for a in args if a not in STEP_FNS]
     if unknown:
         print(f'Unknown steps: {unknown}. Valid: {STEPS}')
