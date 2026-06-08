@@ -120,17 +120,29 @@ def _root_cause(detail):
 
 def write_report(results, csv_rows=None):
     counts = {s: sum(1 for r in results if r['status'] == s) for s in STATUS_COLOR}
+    csv_map = csv_rows or {}
     rows_html = ''
     for r in results:
         color = STATUS_COLOR.get(r['status'], '#000')
         detail = r.get('detail', '') or ''
         root = _root_cause(detail)
+        table = r.get('table', '')
+        table_csv = csv_map.get(table)
+        if table_csv:
+            n = len(table_csv)
+            csv_cell = (
+                f'<a href="csv/{table}.csv" target="_blank">{n}&nbsp;rows</a>'
+                f'&nbsp;<a href="csv/{table}.csv" download>&#8595;dl</a>'
+            )
+        else:
+            csv_cell = ''
         rows_html += (
             f'<tr>'
             f'<td><a href="fixtures/{r["file"]}">{r["file"]}</a></td>'
             f'<td><a href="https://hl7.org/fhir/uv/omop/StructureMap-{r.get("map","")}.html" target="_blank"><code>{r.get("map","")}</code></a></td>'
-            f'<td>{r.get("table","")}</td>'
+            f'<td>{table}</td>'
             f'<td style="color:{color};font-weight:bold">{r["status"]}</td>'
+            f'<td>{csv_cell}</td>'
             f'<td style="font-size:0.85em;color:#555">{root}</td>'
             f'</tr>\n'
         )
@@ -139,27 +151,12 @@ def write_report(results, csv_rows=None):
         for s in STATUS_COLOR
     )
 
-    csv_section = ''
-    if csv_rows:
-        csv_rows_html = ''.join(
-            f'<tr>'
-            f'<td><a href="csv/{table}.csv"><code>{table}.csv</code></a></td>'
-            f'<td>{len(rows)}</td>'
-            f'</tr>\n'
-            for table, rows in sorted(csv_rows.items())
-        )
-        csv_section = f"""
-<h2>Output Tables (CSV)</h2>
-<table style="width:auto">
-<tr><th>File</th><th>Rows</th></tr>
-{csv_rows_html}</table>"""
-
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>ETL Report</title>
 <style>
   body {{ font-family: sans-serif; margin: 2em; background: #f9f9f9; }}
-  h1, h2 {{ color: #333; }}
+  h1 {{ color: #333; }}
   .note {{ background:#fff8e1; border-left:4px solid #c07a00; padding:0.75em 1em; margin:1em 0; font-size:0.95em; }}
   .summary {{ margin: 1em 0; font-size: 1.1em; }}
   table {{ border-collapse: collapse; width: 100%; background: #fff; }}
@@ -180,11 +177,9 @@ def write_report(results, csv_rows=None):
   call <code>translate()</code> for concept lookup. Full concept mapping requires
   either updated StructureMaps or a post-transform vocabulary lookup step.
 </div>
-{csv_section}
-<h2>Transform Results</h2>
 <div class="summary">{summary}</div>
 <table>
-<tr><th>File</th><th>StructureMap</th><th>Table</th><th>Status</th><th>Root Cause</th></tr>
+<tr><th>File</th><th>StructureMap</th><th>Table</th><th>Status</th><th>CSV</th><th>Root Cause</th></tr>
 {rows_html}
 </table>
 </body></html>"""
