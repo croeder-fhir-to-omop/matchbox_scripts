@@ -190,6 +190,22 @@ class TestPersonMapServer:
         assert result.get('gender_concept_id') is None
 
 
+ENCOUNTER_WITH_PERIOD = {
+    "resourceType": "Encounter",
+    "id": "test-period",
+    "status": "finished",
+    # R4: class is a single Coding, period (not actualPeriod), hospitalization (not admission)
+    "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"},
+    "subject": {"reference": "Patient/test"},
+    "period": {"start": "2020-01-01T09:00:00Z", "end": "2020-01-01T10:00:00Z"},
+    "hospitalization": {
+        "dischargeDisposition": {
+            "coding": [{"system": "http://terminology.hl7.org/CodeSystem/discharge-disposition", "code": "home"}]
+        }
+    },
+}
+
+
 class TestEncounterVisitMapLocal:
     """EncounterVisitMap with EncounterClass ConceptMap URL — local concept lookup."""
 
@@ -205,6 +221,27 @@ class TestEncounterVisitMapLocal:
         assert result is not None
         assert result.get('visit_concept_id') == '9201', (
             f"Expected visit_concept_id=9201, got {result.get('visit_concept_id')}"
+        )
+
+    def test_WHEN_encounter_has_period_SHOULD_produce_visit_start_date(self):
+        result = transform(ENCOUNTER_WITH_PERIOD, 'EncounterVisitMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('visit_start_date') is not None, (
+            f"Expected visit_start_date, got None — FML may still use R5 'actualPeriod'"
+        )
+
+    def test_WHEN_encounter_has_hospitalization_SHOULD_produce_discharged_to_source_value(self):
+        result = transform(ENCOUNTER_WITH_PERIOD, 'EncounterVisitMap')
+        assert result is not None
+        assert result.get('discharged_to_source_value') is not None, (
+            f"Expected discharged_to_source_value, got None — FML may still use R5 'admission'"
+        )
+
+    def test_WHEN_encounter_is_transformed_SHOULD_produce_visit_type_concept_id(self):
+        result = transform(ENCOUNTER_AMB, 'EncounterVisitMap')
+        assert result is not None
+        assert result.get('visit_type_concept_id') is not None, (
+            f"Expected visit_type_concept_id (NOT NULL in OMOP), got None"
         )
 
 
