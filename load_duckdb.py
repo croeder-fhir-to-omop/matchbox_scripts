@@ -7,7 +7,7 @@ import csv
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -118,7 +118,7 @@ def _root_cause(detail):
     return interpretation + raw
 
 
-def write_report(results):
+def write_report(results, csv_rows=None):
     counts = {s: sum(1 for r in results if r['status'] == s) for s in STATUS_COLOR}
     rows_html = ''
     for r in results:
@@ -138,12 +138,28 @@ def write_report(results):
         f'<span style="color:{STATUS_COLOR[s]}">{s}: {counts[s]}</span>'
         for s in STATUS_COLOR
     )
+
+    csv_section = ''
+    if csv_rows:
+        csv_rows_html = ''.join(
+            f'<tr>'
+            f'<td><a href="csv/{table}.csv"><code>{table}.csv</code></a></td>'
+            f'<td>{len(rows)}</td>'
+            f'</tr>\n'
+            for table, rows in sorted(csv_rows.items())
+        )
+        csv_section = f"""
+<h2>Output Tables (CSV)</h2>
+<table style="width:auto">
+<tr><th>File</th><th>Rows</th></tr>
+{csv_rows_html}</table>"""
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>ETL Report</title>
 <style>
   body {{ font-family: sans-serif; margin: 2em; background: #f9f9f9; }}
-  h1 {{ color: #333; }}
+  h1, h2 {{ color: #333; }}
   .note {{ background:#fff8e1; border-left:4px solid #c07a00; padding:0.75em 1em; margin:1em 0; font-size:0.95em; }}
   .summary {{ margin: 1em 0; font-size: 1.1em; }}
   table {{ border-collapse: collapse; width: 100%; background: #fff; }}
@@ -154,7 +170,7 @@ def write_report(results):
 </style>
 </head><body>
 <h1>FHIR &rarr; OMOP ETL Report</h1>
-<p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
+<p>Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
 <div class="note">
   <strong>Known limitation — OMOP IG StructureMaps v{IG_VERSION}:</strong>
   The StructureMaps translate FHIR field <em>structure</em> to OMOP field names
@@ -164,6 +180,8 @@ def write_report(results):
   call <code>translate()</code> for concept lookup. Full concept mapping requires
   either updated StructureMaps or a post-transform vocabulary lookup step.
 </div>
+{csv_section}
+<h2>Transform Results</h2>
 <div class="summary">{summary}</div>
 <table>
 <tr><th>File</th><th>StructureMap</th><th>Table</th><th>Status</th><th>Root Cause</th></tr>
@@ -172,6 +190,7 @@ def write_report(results):
 </body></html>"""
     Path(REPORT_PATH).write_text(html)
     print(f'ETL report written to {REPORT_PATH}')
+    return html
 
 
 def write_csvs(csv_rows):
@@ -243,7 +262,7 @@ def run():
     con.close()
     print(f'Done. Database written to {DB_PATH}')
     write_csvs(csv_rows)
-    write_report(results)
+    write_report(results, csv_rows)
 
 
 if __name__ == '__main__':
