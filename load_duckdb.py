@@ -97,19 +97,23 @@ def _root_cause(detail):
         return ''
     if 'NOT NULL constraint' in detail:
         field = detail.split('.')[-1] if '.' in detail else detail
-        return (f'StructureMap (OMOP IG v{IG_VERSION}) does not populate <code>{field}</code> — '
-                f'concept_id translation is not implemented in the map; '
-                f'requires vocabulary lookup not present in current StructureMap logic.')
-    if 'Could not convert string' in detail:
-        # extract the offending value
+        interpretation = (f'<code>{field}</code> is NOT NULL but was not populated — '
+                          f'StructureMap (OMOP IG v{IG_VERSION}) may not call translate() for this field, '
+                          f'or translate() returned null (code not found on terminology server).')
+    elif 'Could not convert string' in detail:
         import re
         m = re.search(r"string '([^']+)'", detail)
         val = m.group(1) if m else '?'
-        return (f'StructureMap placed source code/label <code>{val!r}</code> '
-                f'directly into an integer concept_id field instead of translating it.')
-    if 'unknown resourceType' in detail:
-        return 'matchbox returned an unrecognised resourceType — StructureMap may have failed silently.'
-    return detail
+        interpretation = (f'StructureMap placed source code/label <code>{val}</code> '
+                          f'directly into an integer concept_id field instead of translating it.')
+    elif 'unknown resourceType' in detail:
+        interpretation = 'matchbox returned an unrecognised resourceType — StructureMap may have failed silently.'
+    elif 'Exception executing transform' in detail or 'HAPI' in detail:
+        interpretation = 'matchbox transform error (see detail below).'
+    else:
+        interpretation = ''
+    raw = f'<br><span style="font-size:0.8em;color:#888;font-family:monospace">{detail}</span>'
+    return interpretation + raw
 
 
 def write_report(results):
