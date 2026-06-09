@@ -2,7 +2,8 @@
 FHIR -> OMOP transforms via matchbox $transform.
 
 Each function takes a FHIR resource dict and returns an OMOP dict,
-or None if the resource should be suppressed.
+None if the resource should be suppressed, or raises SkipResource if
+the resource is explicitly incompatible (shown as SKIP in the report).
 """
 
 import os
@@ -22,6 +23,10 @@ _HEADERS = {
 }
 
 _IG = 'http://hl7.org/fhir/uv/omop/StructureMap'
+
+
+class SkipResource(Exception):
+    """Raised when a fixture is explicitly incompatible with the current server configuration."""
 
 
 def _call(resource, map_name):
@@ -102,11 +107,11 @@ def _is_r5_medication(resource):
 
 def transform_medication(resource):
     if _is_r5_medication(resource):
-        return None
+        raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
     return _call(resource, 'MedicationMap')
 
 
 def transform_medication_server(resource):
     if _is_r5_medication(resource):
-        return None
+        raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
     return _call(resource, 'MedicationMapServer')

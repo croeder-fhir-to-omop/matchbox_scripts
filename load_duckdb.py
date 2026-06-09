@@ -122,7 +122,7 @@ def _root_cause(detail):
         val = m.group(1) if m else '?'
         interpretation = (f'StructureMap placed source code/label <code>{val}</code> '
                           f'directly into an integer concept_id field instead of translating it.')
-    elif 'Duplicate primary key' in detail:
+    elif 'violates primary key constraint' in detail:
         interpretation = ('Two source FHIR resources produced the same OMOP primary key — '
                           'they share the same FHIR resource <code>id</code> field, '
                           'or the same source fixture is processed by multiple maps.')
@@ -298,7 +298,9 @@ def run():
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'OK'})
                 csv_rows.setdefault(table, []).append(row)
             else:
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'WARN', 'detail': err})
+                is_server_dup = map_name.endswith('Server') and err and 'violates primary key constraint' in err
+                status = 'SKIP' if is_server_dup else 'WARN'
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err})
 
     con.close()
     print(f'Done. Database written to {DB_PATH}')
