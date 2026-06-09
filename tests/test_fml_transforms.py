@@ -475,6 +475,40 @@ class TestSimpleVitalSignsMeasurementId:
         )
 
 
+class TestSimpleVitalSignsConceptId:
+    """fhir-omop-ig#10 — SimpleVitalSignsMap must populate measurement_concept_id, not
+    measurement_type_concept_id, with the LOINC-translated concept.
+
+    The FML has: sc.code as a -> tgt.measurement_type_concept_id = translate(a, '', 'code')
+    This puts the LOINC concept ID in the wrong field, leaving measurement_concept_id NULL
+    (NOT NULL constraint) and populating measurement_type_concept_id with a clinical concept
+    instead of the required source-type value (32817 EHR).
+    Fix: swap field to measurement_concept_id; hardcode measurement_type_concept_id = 32817.
+    """
+
+    def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_concept_id(self):
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        assert result.get('measurement_concept_id') is not None, (
+            "measurement_concept_id must be set (NOT NULL in OMOP CDM 5.4), got None"
+        )
+
+    def test_WHEN_vital_sign_is_transformed_measurement_concept_id_SHOULD_be_numeric(self):
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        cid = result.get('measurement_concept_id')
+        assert cid is not None and str(cid).lstrip('-').isdigit(), (
+            f"measurement_concept_id must be an integer, got {cid!r}"
+        )
+
+    def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_type_concept_id_32817(self):
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
+        assert str(result.get('measurement_type_concept_id')) == '32817', (
+            f"measurement_type_concept_id must be 32817 (EHR), got {result.get('measurement_type_concept_id')!r}"
+        )
+
+
 BLOOD_PRESSURE = {
     "resourceType": "Observation",
     "id": "test-bp",
