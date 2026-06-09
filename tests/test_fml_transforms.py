@@ -473,3 +473,79 @@ class TestSimpleVitalSignsMeasurementId:
         assert result.get('measurement_id') is not None, (
             "Expected measurement_id to be set (NOT NULL in OMOP CDM 5.4), got None"
         )
+
+
+BLOOD_PRESSURE = {
+    "resourceType": "Observation",
+    "id": "test-bp",
+    "status": "final",
+    "meta": {"profile": ["http://hl7.org/fhir/StructureDefinition/bp"]},
+    "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
+    "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]},
+    "subject": {"reference": "Patient/test"},
+    "effectiveDateTime": "2020-03-15",
+    "component": [
+        {
+            "code": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]},
+            "valueQuantity": {"value": 120, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"},
+        },
+        {
+            "code": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]},
+            "valueQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"},
+        },
+    ],
+}
+
+
+class TestBloodPressureVitalSignsMap:
+    """fhir-omop-ig#9 — BloodPressureVitalSignsMap produces a Bundle of Measurement rows.
+
+    The map returns a Bundle (parent panel + systolic + diastolic). The component
+    groups incorrectly route qty.unit to unit_concept_id (integer); fix is unit_source_value.
+    """
+
+    def test_WHEN_bp_observation_is_transformed_SHOULD_return_bundle(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        assert result is not None, 'BloodPressureVitalSignsMap returned OperationOutcome'
+        assert result.get('resourceType') == 'Bundle', (
+            f"Expected Bundle, got {result.get('resourceType')}"
+        )
+
+    def test_WHEN_bp_observation_is_transformed_SHOULD_have_systolic_entry(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        assert result is not None
+        concept_ids = [e.get('resource', {}).get('measurement_concept_id') for e in result.get('entry', [])]
+        assert '3004249' in concept_ids or 3004249 in concept_ids, (
+            f"Expected systolic measurement_concept_id=3004249 in Bundle entries, got {concept_ids}"
+        )
+
+    def test_WHEN_bp_observation_is_transformed_SHOULD_have_diastolic_entry(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        assert result is not None
+        concept_ids = [e.get('resource', {}).get('measurement_concept_id') for e in result.get('entry', [])]
+        assert '3012888' in concept_ids or 3012888 in concept_ids, (
+            f"Expected diastolic measurement_concept_id=3012888 in Bundle entries, got {concept_ids}"
+        )
+
+    def test_WHEN_bp_is_transformed_SHOULD_not_put_unit_string_in_unit_concept_id(self):
+        """fhir-omop-ig#9 — unit string must not go to the integer unit_concept_id field."""
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        assert result is not None
+        for entry in result.get('entry', []):
+            uid = entry.get('resource', {}).get('unit_concept_id')
+            assert uid is None or str(uid).isdigit(), (
+                f"unit_concept_id must be absent or integer, got {uid!r} — "
+                "BloodPressureVitalSignsMap still writes unit string to unit_concept_id"
+            )
+
+    def test_WHEN_bp_is_transformed_component_entries_SHOULD_have_unit_source_value(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        assert result is not None
+        component_entries = [
+            e.get('resource', {}) for e in result.get('entry', [])
+            if e.get('resource', {}).get('measurement_concept_id')
+        ]
+        assert any(e.get('unit_source_value') == 'mmHg' for e in component_entries), (
+            f"Expected unit_source_value='mmHg' in at least one component entry, "
+            f"got {[e.get('unit_source_value') for e in component_entries]}"
+        )
