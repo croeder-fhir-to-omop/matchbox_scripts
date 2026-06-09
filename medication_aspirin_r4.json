@@ -1,6 +1,6 @@
 {
   "resourceType": "MedicationStatement",
-  "id": "example-medication-aspirin",
+  "id": "example-medication-aspirin-r4",
   "status": "recorded",
   "medicationCodeableConcept": {
     "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin" }]

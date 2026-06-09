@@ -92,12 +92,18 @@ def step_restart():
 
 def step_etl():
     print('\n=== Re-running ETL in dqd container ===')
-    # Remove the old DB so the ETL starts with a clean state
-    run(['docker', 'exec', DQD_CONTAINER, 'rm', '-f', '/omop/omop.ddb'])
-    run(['docker', 'exec', DQD_CONTAINER, 'python3', '/etl/load_duckdb.py'])
+    # Use a temp DB path so we don't conflict with the DQD Shiny app, which
+    # holds a lock on the live /omop/omop.ddb while it's serving queries.
+    tmp_db   = '/tmp/omop_etl.ddb'
+    tmp_csv  = '/tmp/omop_etl_csv'
+    tmp_report = '/tmp/etl_report.html'  # REPORT_PATH = dirname(DB_PATH)/etl_report.html
+    run(['docker', 'exec', DQD_CONTAINER,
+         'bash', '-c',
+         f'rm -f {tmp_db} && OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
+         f'python3 /etl/load_duckdb.py'])
 
-    print(f'\n>>> docker cp {DQD_CONTAINER}:/omop/etl_report.html {ETL_REPORT}')
-    subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:/omop/etl_report.html', str(ETL_REPORT)], check=True)
+    print(f'\n>>> docker cp {DQD_CONTAINER}:{tmp_report} {ETL_REPORT}')
+    subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:{tmp_report}', str(ETL_REPORT)], check=True)
 
     _analyze_report(ETL_REPORT)
 

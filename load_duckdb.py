@@ -36,14 +36,25 @@ CSV_DIR = Path(os.environ.get('OMOP_CSV_DIR', str(Path(DB_PATH).parent / 'csv'))
 REPORT_PATH = os.path.join(os.path.dirname(DB_PATH), 'etl_report.html')
 IG_VERSION = os.environ.get('OMOP_IG_VERSION', '1.0.1')
 
+# ORDER IS SIGNIFICANT: the local DDL enforces FK constraints, so referenced tables
+# must be populated before the tables that reference them. person must be inserted
+# before any clinical table (all carry person_id FK); visit_occurrence before any
+# table that carries a visit_occurrence_id FK.
 FIXTURE_TRANSFORMS = [
-    # pattern, transform_fn, table, map_name
-    ('condition_*.json',      transform_condition,        'condition_occurrence', 'ConditionMap'),
+    # Insert order matters: person must precede all clinical tables (FK person_id);
+    # visit_occurrence must precede clinical tables that carry encounter references.
+
+    # 1. Persons
     ('patient*.json',         transform_patient,          'person',               'PersonMap'),
     ('Patient-Pat-*.json',    transform_patient,          'person',               'PersonMap'),
-    ('procedure_*.json',      transform_procedure,        'procedure_occurrence', 'ProcedureMap'),
+
+    # 2. Visits (must exist before condition, procedure, observation, drug, measurement)
     ('encounter_*.json',      transform_encounter,        'visit_occurrence',     'EncounterVisitMap'),
     ('encounter_*.json',      transform_encounter_server, 'visit_occurrence',     'EncounterVisitMapServer'),
+
+    # 3. Clinical records
+    ('condition_*.json',      transform_condition,        'condition_occurrence', 'ConditionMap'),
+    ('procedure_*.json',      transform_procedure,        'procedure_occurrence', 'ProcedureMap'),
     ('immunization_*.json',   transform_immunization,     'drug_exposure',        'ImmunizationMap'),
     ('observation_weight_int.json',        transform_measurement, 'measurement',  'MeasurementMap'),
     ('observation_temperature_int.json',   transform_vital_signs, 'measurement',  'SimpleVitalSignsMap'),
@@ -63,22 +74,19 @@ STATUS_COLOR = {
 
 
 def load_ddl(con):
-    for name in [
-        'OMOPCDM_duckdb_5.4_ddl.sql',
-        'OMOPCDM_duckdb_5.4_primary_keys.sql',
-        'OMOPCDM_duckdb_5.4_constraints.sql',
-        'OMOPCDM_duckdb_5.4_indices.sql',
-    ]:
-        sql = (DDL_DIR / name).read_text()
-        sql = sql.replace('@cdmDatabaseSchema.', '')
-        for statement in sql.split(';'):
-            lines = [l for l in statement.splitlines() if not l.strip().startswith('--')]
-            statement = '\n'.join(lines).strip()
-            if statement:
-                try:
-                    con.execute(statement)
-                except (duckdb.CatalogException, duckdb.NotImplementedException):
-                    pass
+    # Use the local DDL file which has PKs and non-circular FKs inline —
+    # required because DuckDB does not support ALTER TABLE ADD CONSTRAINT FOREIGN KEY.
+    # Regenerate from source files with ddl/generate_local_ddl.py when the schema changes.
+    sql = (DDL_DIR / 'OMOPCDM_duckdb_5.4_local.sql').read_text()
+    for statement in sql.split('\n\n'):
+        statement = statement.strip()
+        if not statement or statement.startswith('--'):
+            continue
+        try:
+            con.execute(statement)
+        except duckdb.CatalogException:
+            # Table already exists from a prior load — expected on re-run.
+            pass
 
 
 def insert(con, table, row):
@@ -90,7 +98,7 @@ def insert(con, table, row):
     col_list = ', '.join(cols)
     try:
         con.execute(
-            f'INSERT OR IGNORE INTO {table} ({col_list}) VALUES ({placeholders})',
+            f'INSERT INTO {table} ({col_list}) VALUES ({placeholders})',
             vals,
         )
         return True, None
@@ -114,6 +122,10 @@ def _root_cause(detail):
         val = m.group(1) if m else '?'
         interpretation = (f'StructureMap placed source code/label <code>{val}</code> '
                           f'directly into an integer concept_id field instead of translating it.')
+    elif 'Duplicate primary key' in detail:
+        interpretation = ('Two source FHIR resources produced the same OMOP primary key — '
+                          'they share the same FHIR resource <code>id</code> field, '
+                          'or the same source fixture is processed by multiple maps.')
     elif 'unknown resourceType' in detail:
         interpretation = 'matchbox returned an unrecognised resourceType — StructureMap may have failed silently.'
     elif 'Exception executing transform' in detail or 'HAPI' in detail:
