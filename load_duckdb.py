@@ -256,6 +256,8 @@ def write_csvs(csv_rows):
 
 def run():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    if os.path.exists(DB_PATH):
+        os.remove(DB_PATH)
     con = duckdb.connect(DB_PATH)
     results = []
     csv_rows: dict[str, list] = {}
