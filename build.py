@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-Build pipeline: IG → Docker image → restart → tests → release.
+Build pipeline: IG → matchbox JAR → Docker image → restart → tests → release.
 
 Usage:
   python3 build.py                         # full pipeline (ig docker restart test)
+  python3 build.py mvn                     # rebuild matchbox JAR only (skips tests)
   python3 build.py ig                      # rebuild IG only
   python3 build.py docker                  # rebuild matchbox Docker image only
   python3 build.py restart                 # restart dqd_docker (wipes matchbox-db)
   python3 build.py test                    # run tests only
   python3 build.py release                 # build and push both images to Docker Hub
-  python3 build.py ig docker restart test release  # explicit step list
+  python3 build.py mvn ig release          # full release with Java + IG rebuild
 """
 
 import subprocess
@@ -28,7 +29,7 @@ MATCHBOX_SRC  = REPO_ROOT / 'matchbox' / 'matchbox-server'
 PYTEST        = SCRIPTS_DIR / 'env' / 'bin' / 'pytest'
 DQD_COMPOSE   = ['docker', 'compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.matchbox-dev.yml']
 
-STEPS = ['ig', 'docker', 'restart', 'test', 'release']
+STEPS = ['mvn', 'ig', 'docker', 'restart', 'test', 'release']
 DEFAULT_STEPS = ['ig', 'docker', 'restart', 'test']
 
 
@@ -36,6 +37,13 @@ def run(cmd, cwd=None, check=True):
     print(f'\n>>> {" ".join(str(c) for c in cmd)}')
     result = subprocess.run([str(c) for c in cmd], cwd=str(cwd) if cwd else None, check=check)
     return result.returncode
+
+
+def step_mvn():
+    print('\n=== Building matchbox JAR (mvn package -DskipTests) ===')
+    matchbox_root = REPO_ROOT / 'matchbox'
+    run(['mvn', 'package', '-DskipTests'], cwd=matchbox_root)
+    print('matchbox JAR built.')
 
 
 def step_ig():
@@ -85,6 +93,7 @@ def step_test():
 
 
 STEP_FNS = {
+    'mvn':     step_mvn,
     'ig':      step_ig,
     'docker':  step_docker,
     'restart': step_restart,
