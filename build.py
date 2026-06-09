@@ -18,6 +18,7 @@ import platform
 import subprocess
 import sys
 import shutil
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -181,6 +182,95 @@ STEP_FNS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Staleness checks and auto-prerequisites
+# ---------------------------------------------------------------------------
+
+def _image_mtime(image):
+    """Creation timestamp of a local Docker image as Unix float; 0.0 if absent."""
+    r = subprocess.run(
+        ['docker', 'inspect', '--format', '{{.Created}}', image],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0 or not r.stdout.strip():
+        return 0.0
+    try:
+        ts = r.stdout.strip().rstrip('Z').split('.')[0]
+        return datetime.fromisoformat(ts).replace(tzinfo=timezone.utc).timestamp()
+    except Exception:
+        return 0.0
+
+
+def _max_mtime(paths):
+    """Latest mtime of any regular file under the given paths (files or dirs).
+    Skips .git directories and editor backup files."""
+    latest = 0.0
+    for p in paths:
+        p = Path(p)
+        if p.is_file():
+            latest = max(latest, p.stat().st_mtime)
+        elif p.is_dir():
+            for f in p.rglob('*'):
+                if not f.is_file():
+                    continue
+                if any(part.startswith('.') for part in f.parts):
+                    continue
+                if f.suffix == '~' or f.name.endswith('.pyc'):
+                    continue
+                latest = max(latest, f.stat().st_mtime)
+    return latest
+
+
+def _ig_stale():
+    """True if fhir-omop-ig/input/ is newer than the copied IG package."""
+    if not PACKAGE_DST.exists():
+        return True
+    return _max_mtime([IG_DIR / 'input']) > PACKAGE_DST.stat().st_mtime
+
+
+def _matchbox_image_stale():
+    """True if matchbox_docker/ sources are newer than the local matchbox image."""
+    return _max_mtime([MATCHBOX_DIR]) > _image_mtime('croeder/matchbox:latest')
+
+
+def _dqd_image_stale():
+    """True if ETL sources are newer than the local dqd image."""
+    sources = [
+        SCRIPTS_DIR / 'transforms.py',
+        SCRIPTS_DIR / 'load_duckdb.py',
+        SCRIPTS_DIR / 'omop_to_csv.py',
+        SCRIPTS_DIR / 'ddl',
+        DQD_DIR,
+    ] + list(SCRIPTS_DIR.glob('*.json'))
+    return _max_mtime(sources) > _image_mtime('croeder/dqd:latest')
+
+
+def _rebuild_and_reload_dqd():
+    """Build dqd image locally (no push) and recreate the dqd container."""
+    print('\n=== [auto] dqd sources changed — rebuilding image (local only) ===')
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
+    print('\n=== [auto] Reloading dqd container ===')
+    # --no-deps: don't touch matchbox; recreates dqd only if image changed
+    run(['docker', 'compose', 'up', '-d', '--no-deps', 'dqd'], cwd=DQD_DIR)
+
+
+# Each entry: (human label, stale_check_fn, auto_fix_fn)
+STEP_PREREQS = {
+    'docker':  [('fhir-omop-ig package',   _ig_stale,             step_ig)],
+    'restart': [('croeder/matchbox image', _matchbox_image_stale, step_docker)],
+    'test':    [('croeder/matchbox image', _matchbox_image_stale, step_docker)],
+    'etl':     [('croeder/dqd image',      _dqd_image_stale,      _rebuild_and_reload_dqd)],
+    'release': [('fhir-omop-ig package',   _ig_stale,             step_ig)],
+}
+
+
+def _run_prereqs(step):
+    for label, is_stale, fix_fn in STEP_PREREQS.get(step, []):
+        if is_stale():
+            print(f'\n  [stale] {label} — auto-running prerequisite')
+            fix_fn()
+
+
 def main():
     args = sys.argv[1:] or DEFAULT_STEPS
     unknown = [a for a in args if a not in STEP_FNS]
@@ -188,6 +278,7 @@ def main():
         print(f'Unknown steps: {unknown}. Valid: {STEPS}')
         sys.exit(1)
     for step in args:
+        _run_prereqs(step)
         STEP_FNS[step]()
     print('\n=== Done ===')
 
