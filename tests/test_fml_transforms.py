@@ -705,3 +705,104 @@ class TestMedicationStatementMap:
         assert result.get('drug_exposure_start_date') is not None, (
             'Expected drug_exposure_start_date from effectiveDateTime'
         )
+
+
+class TestAllergyMapServer:
+    """AllergyMapServer — AllergyIntolerance → OMOP Observation via Echidna (empty-URL translate).
+
+    Verifies that observation_concept_id is populated by Echidna from the SNOMED coding,
+    in addition to the structural fields covered by TestAllergyMap.
+    """
+
+    def test_WHEN_allergy_server_is_transformed_SHOULD_not_return_operation_outcome(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        assert result is not None, (
+            'AllergyMapServer returned OperationOutcome — map may have a runtime error'
+        )
+
+    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_concept_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        assert result is not None
+        assert result.get('observation_concept_id') is not None, (
+            'Expected observation_concept_id from Echidna SNOMED translate; '
+            'empty-URL fallback to Echidna may not be working'
+        )
+
+    def test_WHEN_allergy_server_is_transformed_observation_concept_id_SHOULD_be_numeric(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        assert result is not None
+        cid = result.get('observation_concept_id')
+        assert cid is not None and str(cid).isdigit(), (
+            f"Expected numeric OMOP concept_id from Echidna, got {cid!r}"
+        )
+
+    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_type_concept_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        assert result is not None
+        assert result.get('observation_type_concept_id') == 32817, (
+            f"Expected observation_type_concept_id=32817 (EHR), "
+            f"got {result.get('observation_type_concept_id')!r}"
+        )
+
+    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        assert result is not None
+        assert result.get('observation_id') is not None
+
+    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_person_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        assert result is not None
+        assert result.get('person_id') is not None
+
+
+class TestMedicationMapServer:
+    """MedicationMapServer — MedicationStatement → OMOP DrugExposure via Echidna.
+
+    Verifies that drug_concept_id is populated by Echidna from the RxNorm coding,
+    in addition to the structural fields covered by TestMedicationStatementMap.
+    """
+
+    def test_WHEN_medication_server_is_transformed_SHOULD_not_return_operation_outcome(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None, (
+            'MedicationMapServer returned OperationOutcome — map may have a runtime error'
+        )
+
+    def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_concept_id(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None
+        assert result.get('drug_concept_id') is not None, (
+            'Expected drug_concept_id from Echidna RxNorm translate; '
+            'empty-URL fallback to Echidna may not be working'
+        )
+
+    def test_WHEN_medication_server_is_transformed_drug_concept_id_SHOULD_be_numeric(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None
+        cid = result.get('drug_concept_id')
+        assert cid is not None and str(cid).isdigit(), (
+            f"Expected numeric OMOP concept_id from Echidna, got {cid!r}"
+        )
+
+    def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_type_concept_id(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None
+        assert result.get('drug_type_concept_id') == 32817, (
+            f"Expected drug_type_concept_id=32817 (EHR), "
+            f"got {result.get('drug_type_concept_id')!r}"
+        )
+
+    def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_exposure_id(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None
+        assert result.get('drug_exposure_id') is not None
+
+    def test_WHEN_medication_server_is_transformed_SHOULD_produce_person_id(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None
+        assert result.get('person_id') is not None
+
+    def test_WHEN_medication_server_is_transformed_SHOULD_produce_start_date(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        assert result is not None
+        assert result.get('drug_exposure_start_date') is not None

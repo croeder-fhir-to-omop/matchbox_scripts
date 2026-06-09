@@ -15,11 +15,14 @@ import duckdb
 from omop_to_csv import COLUMNS as OMOP_COLUMNS
 from transforms import (
     transform_allergy,
+    transform_allergy_server,
     transform_condition,
     transform_encounter,
+    transform_encounter_server,
     transform_immunization,
     transform_measurement,
     transform_medication,
+    transform_medication_server,
     transform_observation,
     transform_patient,
     transform_procedure,
@@ -35,17 +38,20 @@ IG_VERSION = os.environ.get('OMOP_IG_VERSION', '1.0.1')
 
 FIXTURE_TRANSFORMS = [
     # pattern, transform_fn, table, map_name
-    ('condition_*.json',      transform_condition,   'condition_occurrence', 'ConditionMap'),
-    ('patient*.json',         transform_patient,     'person',               'PersonMap'),
-    ('Patient-Pat-*.json',   transform_patient,     'person',               'PersonMap'),
-    ('procedure_*.json',      transform_procedure,   'procedure_occurrence', 'ProcedureMap'),
-    ('allergy_*.json',        transform_allergy,     'observation',          'AllergyMap'),
-    ('encounter_*.json',      transform_encounter,   'visit_occurrence',     'EncounterVisitMap'),
-    ('immunization_*.json',   transform_immunization,'drug_exposure',        'ImmunizationMap'),
-    ('observation_weight_int.json', transform_measurement, 'measurement',    'MeasurementMap'),
-    ('observation_temperature_int.json', transform_vital_signs, 'measurement', 'SimpleVitalSignsMap'),
-    ('observation_smoking*.json', transform_observation, 'observation',      'ObservationMap'),
-    ('medication_*.json',     transform_medication,  'drug_exposure',        'MedicationStatementMap'),
+    ('condition_*.json',      transform_condition,        'condition_occurrence', 'ConditionMap'),
+    ('patient*.json',         transform_patient,          'person',               'PersonMap'),
+    ('Patient-Pat-*.json',    transform_patient,          'person',               'PersonMap'),
+    ('procedure_*.json',      transform_procedure,        'procedure_occurrence', 'ProcedureMap'),
+    ('encounter_*.json',      transform_encounter,        'visit_occurrence',     'EncounterVisitMap'),
+    ('encounter_*.json',      transform_encounter_server, 'visit_occurrence',     'EncounterVisitMapServer'),
+    ('immunization_*.json',   transform_immunization,     'drug_exposure',        'ImmunizationMap'),
+    ('observation_weight_int.json',        transform_measurement, 'measurement',  'MeasurementMap'),
+    ('observation_temperature_int.json',   transform_vital_signs, 'measurement',  'SimpleVitalSignsMap'),
+    ('observation_smoking*.json',          transform_observation, 'observation',   'ObservationMap'),
+    ('allergy_*.json',        transform_allergy,          'observation',          'AllergyMap'),
+    ('allergy_*.json',        transform_allergy_server,   'observation',          'AllergyMapServer'),
+    ('medication_*.json',     transform_medication,       'drug_exposure',        'MedicationMap'),
+    ('medication_*.json',     transform_medication_server,'drug_exposure',        'MedicationMapServer'),
 ]
 
 STATUS_COLOR = {

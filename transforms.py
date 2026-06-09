@@ -64,8 +64,16 @@ def transform_allergy(resource):
     return _call(resource, 'AllergyMap')
 
 
+def transform_allergy_server(resource):
+    return _call(resource, 'AllergyMapServer')
+
+
 def transform_encounter(resource):
     return _call(resource, 'EncounterVisitMap')
+
+
+def transform_encounter_server(resource):
+    return _call(resource, 'EncounterVisitMapServer')
 
 
 def transform_immunization(resource):
@@ -86,3 +94,7 @@ def transform_vital_signs(resource):
 
 def transform_medication(resource):
     return _call(resource, 'MedicationMap')
+
+
+def transform_medication_server(resource):
+    return _call(resource, 'MedicationMapServer')
