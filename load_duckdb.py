@@ -300,6 +300,8 @@ def run():
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'SKIP', 'detail': msg})
                 continue
             row = {c: result.get(c) for c in cols}
+            if table == 'person':
+                row['person_source_value'] = None
             ok, err = insert(con, table, row)
             if ok:
                 print(f'  OK {path.name} -> {table}')
