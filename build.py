@@ -76,10 +76,9 @@ def step_release():
 
 
 def step_restart():
-    print('\n=== Restarting dqd_docker (wiping matchbox-db) ===')
-    run(DQD_COMPOSE + ['down'], cwd=DQD_DIR, check=False)
-    run(['docker', 'volume', 'rm', 'dqd_docker_matchbox-db'], check=False)
-    run(DQD_COMPOSE + ['up', '-d'], cwd=DQD_DIR)
+    print('\n=== Restarting dqd_docker (down -v to wipe matchbox-db, force IG reload) ===')
+    run(['docker', 'compose', 'down', '-v'], cwd=DQD_DIR, check=False)
+    run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
     print('Waiting for matchbox to become healthy...')
     run([
         'bash', '-c',

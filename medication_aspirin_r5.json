@@ -2,17 +2,21 @@
   "resourceType": "MedicationStatement",
   "id": "example-medication-aspirin",
   "status": "recorded",
-  "medicationCodeableConcept": {
-    "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin" }]
+  "medication": {
+    "concept": {
+      "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin" }]
+    }
   },
   "subject": { "reference": "Patient/example" },
   "effectiveDateTime": "2020-03-15",
   "category": [
     { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/medication-statement-category", "code": "outpatient" }] }
   ],
-  "reasonCode": [
+  "reason": [
     {
-      "coding": [{ "system": "http://snomed.info/sct", "code": "38341003", "display": "Hypertensive disorder" }]
+      "concept": {
+        "coding": [{ "system": "http://snomed.info/sct", "code": "38341003", "display": "Hypertensive disorder" }]
+      }
     }
   ]
 }

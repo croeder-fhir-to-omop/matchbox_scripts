@@ -575,10 +575,9 @@ MEDICATION_ASPIRIN = {
     "resourceType": "MedicationStatement",
     "id": "test-medication-aspirin",
     "status": "recorded",
-    "medication": {
-        "concept": {
-            "coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin"}]
-        }
+    # R4: medicationCodeableConcept (R5 uses medication.concept — see medication_aspirin_r5.json)
+    "medicationCodeableConcept": {
+        "coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin"}]
     },
     "subject": {"reference": "Patient/test-patient"},
     "effectiveDateTime": "2020-03-15",
@@ -739,7 +738,8 @@ class TestAllergyMapServer:
     def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_type_concept_id(self):
         result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
         assert result is not None
-        assert result.get('observation_type_concept_id') == 32817, (
+        # FML integer literals serialize as strings in FHIR JSON; accept int or str
+        assert int(str(result.get('observation_type_concept_id') or 0)) == 32817, (
             f"Expected observation_type_concept_id=32817 (EHR), "
             f"got {result.get('observation_type_concept_id')!r}"
         )
@@ -787,7 +787,8 @@ class TestMedicationMapServer:
     def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_type_concept_id(self):
         result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
         assert result is not None
-        assert result.get('drug_type_concept_id') == 32817, (
+        # FML integer literals serialize as strings in FHIR JSON; accept int or str
+        assert int(str(result.get('drug_type_concept_id') or 0)) == 32817, (
             f"Expected drug_type_concept_id=32817 (EHR), "
             f"got {result.get('drug_type_concept_id')!r}"
         )
