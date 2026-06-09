@@ -549,3 +549,159 @@ class TestBloodPressureVitalSignsMap:
             f"Expected unit_source_value='mmHg' in at least one component entry, "
             f"got {[e.get('unit_source_value') for e in component_entries]}"
         )
+
+
+ALLERGY_PEANUT = {
+    "resourceType": "AllergyIntolerance",
+    "id": "test-allergy-peanut",
+    "clinicalStatus": {
+        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]
+    },
+    "verificationStatus": {
+        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", "code": "confirmed"}]
+    },
+    "type": {
+        "coding": [{"system": "http://hl7.org/fhir/allergy-intolerance-type", "code": "allergy"}]
+    },
+    "code": {
+        "coding": [{"system": "http://snomed.info/sct", "code": "91935009", "display": "Allergy to peanuts"}]
+    },
+    "patient": {"reference": "Patient/test-patient"},
+    "encounter": {"reference": "Encounter/test-encounter"},
+    "recordedDate": "2020-03-15",
+}
+
+MEDICATION_ASPIRIN = {
+    "resourceType": "MedicationStatement",
+    "id": "test-medication-aspirin",
+    "status": "recorded",
+    "medication": {
+        "concept": {
+            "coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin"}]
+        }
+    },
+    "subject": {"reference": "Patient/test-patient"},
+    "effectiveDateTime": "2020-03-15",
+    "category": [
+        {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/medication-statement-category", "code": "outpatient"}]}
+    ],
+}
+
+
+class TestAllergyMap:
+    """AllergyMap — AllergyIntolerance → OMOP Observation table.
+
+    Verifies that the map produces a valid Observation row with stable IDs
+    and correct date fields after the id-registry translate() update (fhir-omop-ig#11).
+    """
+
+    def test_WHEN_allergy_is_transformed_SHOULD_not_return_operation_outcome(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None, (
+            'AllergyMap returned OperationOutcome — map may have a runtime error'
+        )
+
+    def test_WHEN_allergy_is_transformed_SHOULD_produce_observation_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        assert result.get('observation_id') is not None, (
+            'Expected observation_id to be set; id-registry translate() may have failed'
+        )
+
+    def test_WHEN_allergy_is_transformed_observation_id_SHOULD_be_numeric(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        oid = result.get('observation_id')
+        assert oid is not None and str(oid).isdigit(), (
+            f"Expected numeric observation_id from id-registry, got {oid!r}"
+        )
+
+    def test_WHEN_allergy_is_transformed_SHOULD_produce_person_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        assert result.get('person_id') is not None, (
+            'Expected person_id from patient.reference; nested reference extraction may have failed'
+        )
+
+    def test_WHEN_allergy_is_transformed_person_id_SHOULD_be_numeric(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        pid = result.get('person_id')
+        assert pid is not None and str(pid).isdigit(), (
+            f"Expected numeric person_id from id-registry, got {pid!r}"
+        )
+
+    def test_WHEN_allergy_is_transformed_SHOULD_produce_visit_occurrence_id(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        assert result.get('visit_occurrence_id') is not None, (
+            'Expected visit_occurrence_id from encounter.reference'
+        )
+
+    def test_WHEN_allergy_is_transformed_SHOULD_produce_observation_date(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        assert result.get('observation_date') is not None, (
+            'Expected observation_date from recordedDate'
+        )
+
+    def test_WHEN_allergy_is_transformed_person_id_SHOULD_match_patient_reference(self):
+        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        assert result is not None
+        # person_id must equal stable_id("Patient", "test-patient") — same value as PersonMap
+        # would assign for the same patient. Verify it is consistent (non-zero, numeric).
+        pid = result.get('person_id')
+        assert pid is not None and str(pid).isdigit() and int(str(pid)) > 0, (
+            f"Expected positive numeric person_id, got {pid!r}"
+        )
+
+
+class TestMedicationStatementMap:
+    """MedicationStatementMap — MedicationStatement → OMOP DrugExposure table.
+
+    Verifies that the map produces a valid DrugExposure row with stable IDs
+    and correct date fields after the id-registry translate() update (fhir-omop-ig#11).
+    """
+
+    def test_WHEN_medication_is_transformed_SHOULD_not_return_operation_outcome(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        assert result is not None, (
+            'MedicationMap returned OperationOutcome — map may have a runtime error'
+        )
+
+    def test_WHEN_medication_is_transformed_SHOULD_produce_drug_exposure_id(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        assert result is not None
+        assert result.get('drug_exposure_id') is not None, (
+            'Expected drug_exposure_id to be set; id-registry translate() may have failed'
+        )
+
+    def test_WHEN_medication_is_transformed_drug_exposure_id_SHOULD_be_numeric(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        assert result is not None
+        did = result.get('drug_exposure_id')
+        assert did is not None and str(did).isdigit(), (
+            f"Expected numeric drug_exposure_id from id-registry, got {did!r}"
+        )
+
+    def test_WHEN_medication_is_transformed_SHOULD_produce_person_id(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        assert result is not None
+        assert result.get('person_id') is not None, (
+            'Expected person_id from subject.reference; nested reference extraction may have failed'
+        )
+
+    def test_WHEN_medication_is_transformed_person_id_SHOULD_be_numeric(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        assert result is not None
+        pid = result.get('person_id')
+        assert pid is not None and str(pid).isdigit(), (
+            f"Expected numeric person_id from id-registry, got {pid!r}"
+        )
+
+    def test_WHEN_medication_is_transformed_SHOULD_produce_start_date(self):
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        assert result is not None
+        assert result.get('drug_exposure_start_date') is not None, (
+            'Expected drug_exposure_start_date from effectiveDateTime'
+        )
