@@ -115,3 +115,15 @@ def transform_medication_server(resource):
     if _is_r5_medication(resource):
         raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
     return _call(resource, 'MedicationMapServer')
+
+
+def transform_bp_panel(resource):
+    return _call(resource, 'BloodPressureVitalSignsMap')
+
+
+def transform_bp_systolic(resource):
+    return _call(resource, 'BloodPressureSystolicMap')
+
+
+def transform_bp_diastolic(resource):
+    return _call(resource, 'BloodPressureDiastolicMap')

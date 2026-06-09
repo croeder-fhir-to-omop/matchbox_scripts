@@ -532,57 +532,162 @@ BLOOD_PRESSURE = {
 
 
 class TestBloodPressureVitalSignsMap:
-    """fhir-omop-ig#9 — BloodPressureVitalSignsMap produces a Bundle of Measurement rows.
+    """BloodPressureVitalSignsMap maps the BP panel Observation as a single OMOP Measurement.
 
-    The map returns a Bundle (parent panel + systolic + diastolic). The component
-    groups incorrectly route qty.unit to unit_concept_id (integer); fix is unit_source_value.
+    HAPI-FHIR FML cannot set OMOP properties on resources created via create() inside Bundle
+    entries, so the Bundle-based approach was replaced with three single-resource maps:
+    BloodPressureVitalSignsMap (panel), BloodPressureSystolicMap, BloodPressureDiastolicMap.
     """
 
-    def test_WHEN_bp_observation_is_transformed_SHOULD_return_bundle(self):
+    def test_WHEN_bp_panel_is_transformed_SHOULD_return_measurement(self):
         result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
         assert result is not None, 'BloodPressureVitalSignsMap returned OperationOutcome'
-        assert result.get('resourceType') == 'Bundle', (
-            f"Expected Bundle, got {result.get('resourceType')}"
+        assert result.get('resourceType') in ('MeasureTable', 'Measurement'), (
+            f"Expected MeasureTable/Measurement, got {result.get('resourceType')}"
         )
 
-    def test_WHEN_bp_observation_is_transformed_SHOULD_have_systolic_entry(self):
+    def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_concept_id(self):
         result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
         assert result is not None
-        concept_ids = [e.get('resource', {}).get('measurement_concept_id') for e in result.get('entry', [])]
-        assert '3004249' in concept_ids or 3004249 in concept_ids, (
-            f"Expected systolic measurement_concept_id=3004249 in Bundle entries, got {concept_ids}"
+        cid = result.get('measurement_concept_id')
+        assert cid is not None, 'measurement_concept_id must not be None'
+        assert str(cid).lstrip('-').isdigit(), f'measurement_concept_id must be integer, got {cid!r}'
+
+    def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_type_concept_id_32817(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        assert result is not None
+        assert str(result.get('measurement_type_concept_id')) == '32817', (
+            f"measurement_type_concept_id must be 32817, got {result.get('measurement_type_concept_id')!r}"
         )
 
-    def test_WHEN_bp_observation_is_transformed_SHOULD_have_diastolic_entry(self):
+    def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_id(self):
         result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
         assert result is not None
-        concept_ids = [e.get('resource', {}).get('measurement_concept_id') for e in result.get('entry', [])]
-        assert '3012888' in concept_ids or 3012888 in concept_ids, (
-            f"Expected diastolic measurement_concept_id=3012888 in Bundle entries, got {concept_ids}"
+        mid = result.get('measurement_id')
+        assert mid is not None, 'measurement_id must not be None (required for OMOP PK)'
+
+
+class TestBloodPressureSystolicMap:
+    """BloodPressureSystolicMap extracts systolic component from a bp Observation.
+
+    Produces a single OMOP Measurement row with hardcoded concept_id 3004249 (OMOP for
+    systolic BP LOINC 8480-6), using registry URL Measurement-Systolic for PK uniqueness.
+    """
+
+    def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_return_measurement(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        assert result is not None, 'BloodPressureSystolicMap returned OperationOutcome'
+        assert result.get('resourceType') in ('MeasureTable', 'Measurement'), (
+            f"Expected MeasureTable/Measurement, got {result.get('resourceType')}"
         )
 
-    def test_WHEN_bp_is_transformed_SHOULD_not_put_unit_string_in_unit_concept_id(self):
-        """fhir-omop-ig#9 — unit string must not go to the integer unit_concept_id field."""
-        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+    def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_concept_id_3004249(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
         assert result is not None
-        for entry in result.get('entry', []):
-            uid = entry.get('resource', {}).get('unit_concept_id')
-            assert uid is None or str(uid).isdigit(), (
-                f"unit_concept_id must be absent or integer, got {uid!r} — "
-                "BloodPressureVitalSignsMap still writes unit string to unit_concept_id"
-            )
-
-    def test_WHEN_bp_is_transformed_component_entries_SHOULD_have_unit_source_value(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
-        assert result is not None
-        component_entries = [
-            e.get('resource', {}) for e in result.get('entry', [])
-            if e.get('resource', {}).get('measurement_concept_id')
-        ]
-        assert any(e.get('unit_source_value') == 'mmHg' for e in component_entries), (
-            f"Expected unit_source_value='mmHg' in at least one component entry, "
-            f"got {[e.get('unit_source_value') for e in component_entries]}"
+        cid = result.get('measurement_concept_id')
+        assert str(cid) == '3004249', (
+            f"Expected measurement_concept_id=3004249 (systolic BP), got {cid!r}"
         )
+
+    def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_type_concept_id_32817(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        assert result is not None
+        assert str(result.get('measurement_type_concept_id')) == '32817', (
+            f"measurement_type_concept_id must be 32817, got {result.get('measurement_type_concept_id')!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_value_120(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        assert result is not None
+        v = result.get('value_as_number')
+        assert str(v) in ('120', '120.0'), f'Expected value_as_number=120, got {v!r}'
+
+    def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_unit_mmHg(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        assert result is not None
+        assert result.get('unit_source_value') == 'mmHg', (
+            f"Expected unit_source_value='mmHg', got {result.get('unit_source_value')!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_systolic_map_unit_concept_id_SHOULD_be_absent_or_integer(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        assert result is not None
+        uid = result.get('unit_concept_id')
+        assert uid is None or str(uid).lstrip('-').isdigit(), (
+            f"unit_concept_id must be absent or integer, got {uid!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_measurement_id(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        assert result is not None
+        mid = result.get('measurement_id')
+        assert mid is not None, 'measurement_id must not be None'
+
+    def test_WHEN_systolic_and_diastolic_maps_applied_to_same_bp_SHOULD_produce_different_measurement_ids(self):
+        sys_result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        dia_result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert sys_result is not None and dia_result is not None
+        assert sys_result.get('measurement_id') != dia_result.get('measurement_id'), (
+            'Systolic and diastolic measurement_id values must differ — they target different OMOP rows '
+            '(use distinct registry URL suffixes: Measurement-Systolic vs Measurement-Diastolic)'
+        )
+
+
+class TestBloodPressureDiastolicMap:
+    """BloodPressureDiastolicMap extracts diastolic component from a bp Observation.
+
+    Produces a single OMOP Measurement row with hardcoded concept_id 3012888 (OMOP for
+    diastolic BP LOINC 8462-4), using registry URL Measurement-Diastolic for PK uniqueness.
+    """
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_return_measurement(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None, 'BloodPressureDiastolicMap returned OperationOutcome'
+        assert result.get('resourceType') in ('MeasureTable', 'Measurement'), (
+            f"Expected MeasureTable/Measurement, got {result.get('resourceType')}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_concept_id_3012888(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None
+        cid = result.get('measurement_concept_id')
+        assert str(cid) == '3012888', (
+            f"Expected measurement_concept_id=3012888 (diastolic BP), got {cid!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_type_concept_id_32817(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None
+        assert str(result.get('measurement_type_concept_id')) == '32817', (
+            f"measurement_type_concept_id must be 32817, got {result.get('measurement_type_concept_id')!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_value_80(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None
+        v = result.get('value_as_number')
+        assert str(v) in ('80', '80.0'), f'Expected value_as_number=80, got {v!r}'
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_unit_mmHg(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None
+        assert result.get('unit_source_value') == 'mmHg', (
+            f"Expected unit_source_value='mmHg', got {result.get('unit_source_value')!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_unit_concept_id_SHOULD_be_absent_or_integer(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None
+        uid = result.get('unit_concept_id')
+        assert uid is None or str(uid).lstrip('-').isdigit(), (
+            f"unit_concept_id must be absent or integer, got {uid!r}"
+        )
+
+    def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_measurement_id(self):
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        assert result is not None
+        mid = result.get('measurement_id')
+        assert mid is not None, 'measurement_id must not be None'
 
 
 ALLERGY_PEANUT = {
