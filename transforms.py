@@ -92,9 +92,21 @@ def transform_vital_signs(resource):
     return _call(resource, 'SimpleVitalSignsMap')
 
 
+def _is_r5_medication(resource):
+    # R5 MedicationStatement uses medication.concept (CodeableReference);
+    # R4 uses medicationCodeableConcept / medicationReference (choice type).
+    # Suppress R5 fixtures — matchbox runs FHIR R4 (see fhir-omop-ig issue for R4/R5 compat).
+    med = resource.get('medication', {})
+    return isinstance(med, dict) and 'concept' in med
+
+
 def transform_medication(resource):
+    if _is_r5_medication(resource):
+        return None
     return _call(resource, 'MedicationMap')
 
 
 def transform_medication_server(resource):
+    if _is_r5_medication(resource):
+        return None
     return _call(resource, 'MedicationMapServer')
