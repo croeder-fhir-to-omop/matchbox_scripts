@@ -101,7 +101,7 @@ def step_etl():
     run(['docker', 'exec', DQD_CONTAINER,
          'bash', '-c',
          f'rm -f {tmp_db} && OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
-         f'python3 /etl/load_duckdb.py'])
+         f'python3 /etl/load_duckdb.py --fixtures-dir test_files sample_fixtures'])
 
     print(f'\n>>> docker cp {DQD_CONTAINER}:{tmp_report} {ETL_REPORT}')
     subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:{tmp_report}', str(ETL_REPORT)], check=True)
@@ -241,7 +241,8 @@ def _dqd_image_stale():
         SCRIPTS_DIR / 'omop_to_csv.py',
         SCRIPTS_DIR / 'ddl',
         DQD_DIR,
-    ] + list(SCRIPTS_DIR.glob('*.json'))
+    ] + list((SCRIPTS_DIR / 'test_files').glob('*.json'))
+      + list((SCRIPTS_DIR / 'sample_fixtures').glob('*.json'))
     return _max_mtime(sources) > _image_mtime('croeder/dqd:latest')
 
 

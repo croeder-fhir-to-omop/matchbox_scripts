@@ -256,8 +256,12 @@ def write_csvs(csv_rows):
     print(f'CSV files written to {CSV_DIR}')
 
 
-def run(fixture_dir=None):
-    fixture_dir = fixture_dir or DEFAULT_FIXTURES_DIR
+def run(fixture_dirs=None):
+    if fixture_dirs is None:
+        fixture_dirs = [DEFAULT_FIXTURES_DIR]
+    elif isinstance(fixture_dirs, Path):
+        fixture_dirs = [fixture_dirs]
+
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     if os.path.exists(DB_PATH):
         os.remove(DB_PATH)
@@ -280,7 +284,17 @@ def run(fixture_dir=None):
         )
     """)
 
-    print(f'Fixtures dir: {fixture_dir}')
+    for fixture_dir in fixture_dirs:
+        print(f'Fixtures dir: {fixture_dir}')
+        _load_fixture_dir(con, fixture_dir, results, csv_rows)
+
+    con.close()
+    print(f'Done. Database written to {DB_PATH}')
+    write_csvs(csv_rows)
+    write_report(results, csv_rows)
+
+
+def _load_fixture_dir(con, fixture_dir, results, csv_rows):
     for pattern, transform_fn, table, map_name in FIXTURE_TRANSFORMS:
         paths = sorted(fixture_dir.glob(pattern))
         for path in paths:
@@ -316,15 +330,10 @@ def run(fixture_dir=None):
                 status = 'SKIP' if is_server_dup else 'WARN'
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err})
 
-    con.close()
-    print(f'Done. Database written to {DB_PATH}')
-    write_csvs(csv_rows)
-    write_report(results, csv_rows)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--fixtures-dir', default=os.environ.get('FIXTURES_DIR', 'test_files'),
-                        help='Directory containing fixture JSON files (default: test_files; also reads FIXTURES_DIR env var)')
+    parser.add_argument('--fixtures-dir', nargs='+', default=os.environ.get('FIXTURES_DIR', 'test_files').split(),
+                        help='One or more fixture directories (default: test_files; also reads FIXTURES_DIR env var)')
     args = parser.parse_args()
-    run(fixture_dir=SCRIPTS_DIR / args.fixtures_dir)
+    run(fixture_dirs=[SCRIPTS_DIR / d for d in args.fixtures_dir])
