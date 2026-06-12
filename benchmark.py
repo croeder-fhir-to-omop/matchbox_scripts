@@ -21,10 +21,13 @@ they never reach matchbox.
 Usage:
     MATCHBOX_URL=http://localhost:8080 python benchmark.py
     python benchmark.py --url http://localhost:8080 --rounds 50 --workers 8
+    python benchmark.py --fixtures-dir volume_population
+    FIXTURES_DIR=sample_fixtures python benchmark.py
 """
 
 import argparse
 import json
+import os
 import statistics
 import sys
 import time
@@ -89,12 +92,12 @@ def _timed(fn, resource):
     return None, time.perf_counter() - t0, last_err
 
 
-def load_cases():
+def load_cases(fixtures_dir):
     loaded = []
     for filename, fn, label in CASES:
-        path = HERE / filename
+        path = fixtures_dir / filename
         if not path.exists():
-            print(f"  WARNING: {filename} not found, skipping", file=sys.stderr)
+            print(f"  WARNING: {filename} not found in {fixtures_dir}, skipping", file=sys.stderr)
             continue
         resource = json.loads(path.read_text())
         loaded.append((resource, fn, label))
@@ -200,21 +203,25 @@ def echidna_summary(first_times, warm_timings):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--url",     default=None,  help="Matchbox base URL (overrides MATCHBOX_URL env var)")
-    parser.add_argument("--rounds",  type=int, default=50,  help="Warm sequential rounds per fixture (default: 50)")
-    parser.add_argument("--workers", type=int, default=8,   help="Concurrent worker threads (default: 8)")
-    parser.add_argument("--total",   type=int, default=200, help="Total calls for concurrency test (default: 200)")
+    parser.add_argument("--url",          default=None,  help="Matchbox base URL (overrides MATCHBOX_URL env var)")
+    parser.add_argument("--rounds",       type=int, default=50,  help="Warm sequential rounds per fixture (default: 50)")
+    parser.add_argument("--workers",      type=int, default=8,   help="Concurrent worker threads (default: 8)")
+    parser.add_argument("--total",        type=int, default=200, help="Total calls for concurrency test (default: 200)")
+    parser.add_argument("--fixtures-dir", default=os.environ.get("FIXTURES_DIR", "test_files"),
+                        help="Directory containing fixture JSON files (default: test_files; also reads FIXTURES_DIR env var)")
     args = parser.parse_args()
 
     if args.url:
         _t._BASE_URL = args.url.rstrip("/") + "/matchboxv3/fhir"
 
-    cases = load_cases()
+    fixtures_dir = HERE / args.fixtures_dir
+    cases = load_cases(fixtures_dir)
     if not cases:
-        print("No fixtures found — run from matchbox_scripts/ or a directory containing the JSON fixtures.", file=sys.stderr)
+        print(f"No fixtures found in {fixtures_dir}", file=sys.stderr)
         sys.exit(1)
 
     print(f"Matchbox URL : {_t._base_url()}")
+    print(f"Fixtures dir : {fixtures_dir}")
     print(f"Fixtures     : {len(cases)}")
     print(f"Warm rounds  : {args.rounds} × {len(cases)} = {args.rounds * len(cases)} calls")
     print(f"Concurrency  : {args.total} calls across {args.workers} workers")

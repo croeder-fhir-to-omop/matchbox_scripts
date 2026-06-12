@@ -3,6 +3,7 @@ Load all FHIR fixture JSON files through matchbox transforms and insert into
 an OMOP CDM 5.4 DuckDB database.
 """
 
+import argparse
 import csv
 import json
 import os
@@ -38,6 +39,7 @@ DB_PATH = os.environ.get('OMOP_DB_PATH', '/omop/omop.ddb')
 CSV_DIR = Path(os.environ.get('OMOP_CSV_DIR', str(Path(DB_PATH).parent / 'csv')))
 REPORT_PATH = os.path.join(os.path.dirname(DB_PATH), 'etl_report.html')
 IG_VERSION = os.environ.get('OMOP_IG_VERSION', '1.0.1')
+DEFAULT_FIXTURES_DIR = SCRIPTS_DIR / os.environ.get('FIXTURES_DIR', 'test_files')
 
 # ORDER IS SIGNIFICANT: the local DDL enforces FK constraints, so referenced tables
 # must be populated before the tables that reference them. person must be inserted
@@ -254,7 +256,8 @@ def write_csvs(csv_rows):
     print(f'CSV files written to {CSV_DIR}')
 
 
-def run():
+def run(fixture_dir=None):
+    fixture_dir = fixture_dir or DEFAULT_FIXTURES_DIR
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     if os.path.exists(DB_PATH):
         os.remove(DB_PATH)
@@ -277,8 +280,9 @@ def run():
         )
     """)
 
+    print(f'Fixtures dir: {fixture_dir}')
     for pattern, transform_fn, table, map_name in FIXTURE_TRANSFORMS:
-        paths = sorted(SCRIPTS_DIR.glob(pattern))
+        paths = sorted(fixture_dir.glob(pattern))
         for path in paths:
             resource = json.loads(path.read_text())
             try:
@@ -319,4 +323,8 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--fixtures-dir', default=os.environ.get('FIXTURES_DIR', 'test_files'),
+                        help='Directory containing fixture JSON files (default: test_files; also reads FIXTURES_DIR env var)')
+    args = parser.parse_args()
+    run(fixture_dir=SCRIPTS_DIR / args.fixtures_dir)

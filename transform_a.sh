@@ -2,7 +2,8 @@
 # Pattern A: inline map via Parameters body
 # Both 'resource' and 'map' must be valueString (serialized strings), not embedded resources.
 
-PATIENT_FILE="patient.json"
+FIXTURES_DIR="${FIXTURES_DIR:-test_files}"
+PATIENT_FILE="${FIXTURES_DIR}/patient.json"
 MAP_FILE="PersonMap.fml"
 if [ "$1" = "--standalone" ]; then
   BASE_URL="http://localhost:8080/matchboxv3/fhir"
