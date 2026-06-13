@@ -14,6 +14,7 @@ Issues:
   fhir-omop-ig#8      https://github.com/croeder-fhir-to-omop/fhir-omop-ig/issues/8
 """
 import os
+import time
 import pytest
 import requests
 
@@ -38,6 +39,22 @@ def transform(resource: dict, map_name: str) -> dict | None:
     result = r.json()
     if result.get('resourceType') == 'OperationOutcome':
         return None
+    return result
+
+
+def _retrying(fn, passes, attempts=5, delay=3):
+    """Call fn() up to attempts times until passes(result) is True, sleeping between tries.
+
+    Handles Echidna cold-cache misses where a valid resource is returned but
+    terminology-translated fields (e.g. drug_concept_id) are missing on first call.
+    Echidna may take several seconds to populate a vocabulary on first use.
+    """
+    for i in range(attempts):
+        result = fn()
+        if passes(result):
+            return result
+        if i < attempts - 1:
+            time.sleep(delay)
     return result
 
 
@@ -908,7 +925,13 @@ class TestMedicationMapServer:
         )
 
     def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_concept_id(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        # Echidna loads the RxNorm vocabulary on first use; after heavy SNOMED load
+        # from prior tests this can take ~45s, so retry generously.
+        result = _retrying(
+            lambda: transform(MEDICATION_ASPIRIN, 'MedicationMapServer'),
+            passes=lambda r: r is not None and r.get('drug_concept_id') is not None,
+            attempts=20, delay=3,
+        )
         assert result is not None
         assert result.get('drug_concept_id') is not None, (
             'Expected drug_concept_id from Echidna RxNorm translate; '
@@ -916,7 +939,11 @@ class TestMedicationMapServer:
         )
 
     def test_WHEN_medication_server_is_transformed_drug_concept_id_SHOULD_be_numeric(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
+        result = _retrying(
+            lambda: transform(MEDICATION_ASPIRIN, 'MedicationMapServer'),
+            passes=lambda r: r is not None and r.get('drug_concept_id') is not None,
+            attempts=20, delay=3,
+        )
         assert result is not None
         cid = result.get('drug_concept_id')
         assert cid is not None and str(cid).isdigit(), (
