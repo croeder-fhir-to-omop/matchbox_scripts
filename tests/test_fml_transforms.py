@@ -504,14 +504,22 @@ class TestSimpleVitalSignsConceptId:
     """
 
     def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_concept_id(self):
-        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        result = _retrying(
+            lambda: transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap'),
+            passes=lambda r: r is not None and r.get('measurement_concept_id') is not None,
+            attempts=3, delay=10,
+        )
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         assert result.get('measurement_concept_id') is not None, (
             "measurement_concept_id must be set (NOT NULL in OMOP CDM 5.4), got None"
         )
 
     def test_WHEN_vital_sign_is_transformed_measurement_concept_id_SHOULD_be_numeric(self):
-        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        result = _retrying(
+            lambda: transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap'),
+            passes=lambda r: r is not None and r.get('measurement_concept_id') is not None,
+            attempts=3, delay=10,
+        )
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         cid = result.get('measurement_concept_id')
         assert cid is not None and str(cid).lstrip('-').isdigit(), (
@@ -564,7 +572,11 @@ class TestBloodPressureVitalSignsMap:
         )
 
     def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_concept_id(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        result = _retrying(
+            lambda: transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap'),
+            passes=lambda r: r is not None and r.get('measurement_concept_id') is not None,
+            attempts=3, delay=10,
+        )
         assert result is not None
         cid = result.get('measurement_concept_id')
         assert cid is not None, 'measurement_concept_id must not be None'
@@ -876,7 +888,11 @@ class TestAllergyMapServer:
         )
 
     def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_concept_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        result = _retrying(
+            lambda: transform(ALLERGY_PEANUT, 'AllergyMapServer'),
+            passes=lambda r: r is not None and r.get('observation_concept_id') is not None,
+            attempts=3, delay=10,
+        )
         assert result is not None
         assert result.get('observation_concept_id') is not None, (
             'Expected observation_concept_id from Echidna SNOMED translate; '
@@ -884,7 +900,11 @@ class TestAllergyMapServer:
         )
 
     def test_WHEN_allergy_server_is_transformed_observation_concept_id_SHOULD_be_numeric(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
+        result = _retrying(
+            lambda: transform(ALLERGY_PEANUT, 'AllergyMapServer'),
+            passes=lambda r: r is not None and r.get('observation_concept_id') is not None,
+            attempts=3, delay=10,
+        )
         assert result is not None
         cid = result.get('observation_concept_id')
         assert cid is not None and str(cid).isdigit(), (
@@ -925,12 +945,12 @@ class TestMedicationMapServer:
         )
 
     def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_concept_id(self):
-        # Echidna loads the RxNorm vocabulary on first use; after heavy SNOMED load
-        # from prior tests this can take ~45s, so retry generously.
+        # Echidna may return None for drug_concept_id transiently — either RxNorm
+        # cold-cache or rate-limiting after a burst of prior transform calls.
         result = _retrying(
             lambda: transform(MEDICATION_ASPIRIN, 'MedicationMapServer'),
             passes=lambda r: r is not None and r.get('drug_concept_id') is not None,
-            attempts=20, delay=3,
+            attempts=3, delay=30,
         )
         assert result is not None
         assert result.get('drug_concept_id') is not None, (
@@ -942,7 +962,7 @@ class TestMedicationMapServer:
         result = _retrying(
             lambda: transform(MEDICATION_ASPIRIN, 'MedicationMapServer'),
             passes=lambda r: r is not None and r.get('drug_concept_id') is not None,
-            attempts=20, delay=3,
+            attempts=3, delay=30,
         )
         assert result is not None
         cid = result.get('drug_concept_id')
