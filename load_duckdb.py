@@ -61,16 +61,23 @@ FIXTURE_TRANSFORMS = [
     ('condition_*.json',      transform_condition,        'condition_occurrence', 'ConditionMap'),
     ('procedure_*.json',      transform_procedure,        'procedure_occurrence', 'ProcedureMap'),
     ('immunization_*.json',   transform_immunization,     'drug_exposure',        'ImmunizationMap'),
-    ('observation_weight_int.json',        transform_measurement, 'measurement',  'MeasurementMap'),
-    ('observation_temperature_int.json',   transform_vital_signs, 'measurement',  'SimpleVitalSignsMap'),
-    ('observation_bp*.json',               transform_bp_panel,    'measurement',  'BloodPressureVitalSignsMap'),
-    ('observation_bp*.json',               transform_bp_systolic, 'measurement',  'BloodPressureSystolicMap'),
-    ('observation_bp*.json',               transform_bp_diastolic,'measurement',  'BloodPressureDiastolicMap'),
-    ('observation_smoking*.json',          transform_observation, 'observation',   'ObservationMap'),
+    ('observation_*weight*.json',           transform_measurement, 'measurement',  'MeasurementMap'),
+    ('observation_*creatinine*.json',       transform_measurement, 'measurement',  'MeasurementMap'),
+    ('observation_*sodium*.json',           transform_measurement, 'measurement',  'MeasurementMap'),
+    ('observation_*NEG*.json',              transform_measurement, 'measurement',  'MeasurementMap'),
+    ('observation_*temp*.json',             transform_vital_signs, 'measurement',  'SimpleVitalSignsMap'),
+    ('observation_*heartrate*.json',        transform_vital_signs, 'measurement',  'SimpleVitalSignsMap'),
+    ('observation_bp*.json',                transform_bp_panel,    'measurement',  'BloodPressureVitalSignsMap'),
+    ('observation_bp*.json',                transform_bp_systolic, 'measurement',  'BloodPressureSystolicMap'),
+    ('observation_bp*.json',                transform_bp_diastolic,'measurement',  'BloodPressureDiastolicMap'),
+    ('observation_*blood*.json',            transform_bp_panel,    'measurement',  'BloodPressureVitalSignsMap'),
+    ('observation_*blood*.json',            transform_bp_systolic, 'measurement',  'BloodPressureSystolicMap'),
+    ('observation_*blood*.json',            transform_bp_diastolic,'measurement',  'BloodPressureDiastolicMap'),
+    ('observation_smoking*.json',           transform_observation, 'observation',  'ObservationMap'),
     ('allergy_*.json',        transform_allergy,          'observation',          'AllergyMap'),
     ('allergy_*.json',        transform_allergy_server,   'observation',          'AllergyMapServer'),
-    ('medication_*.json',     transform_medication,       'drug_exposure',        'MedicationMap'),
-    ('medication_*.json',     transform_medication_server,'drug_exposure',        'MedicationMapServer'),
+    ('medication*.json',      transform_medication,       'drug_exposure',        'MedicationMap'),
+    ('medication*.json',      transform_medication_server,'drug_exposure',        'MedicationMapServer'),
 ]
 
 STATUS_COLOR = {
@@ -165,7 +172,7 @@ def write_report(results, csv_rows=None):
         rows_html += (
             f'<tr>'
             f'<td><a href="fixtures/{r["file"]}">{r["file"]}</a></td>'
-            f'<td><a href="https://hl7.org/fhir/uv/omop/StructureMap-{r.get("map","")}.html" target="_blank"><code>{r.get("map","")}</code></a></td>'
+            f'<td>{f"""<a href="https://hl7.org/fhir/uv/omop/StructureMap-{r["map"]}.html" target="_blank"><code>{r["map"]}</code></a>""" if r.get("map") else ""}</td>'
             f'<td>{table}</td>'
             f'<td style="color:{color};font-weight:bold">{r["status"]}</td>'
             f'<td>{csv_cell}</td>'
@@ -295,9 +302,11 @@ def run(fixture_dirs=None):
 
 
 def _load_fixture_dir(con, fixture_dir, results, csv_rows):
+    processed = set()
     for pattern, transform_fn, table, map_name in FIXTURE_TRANSFORMS:
         paths = sorted(fixture_dir.glob(pattern))
         for path in paths:
+            processed.add(path.name)
             resource = json.loads(path.read_text())
             try:
                 result = transform_fn(resource)
@@ -329,6 +338,17 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
                 is_server_dup = map_name.endswith('Server') and err and 'violates primary key constraint' in err
                 status = 'SKIP' if is_server_dup else 'WARN'
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err})
+
+    for path in sorted(fixture_dir.glob('*.json')):
+        if path.name in processed:
+            continue
+        try:
+            resource_type = json.loads(path.read_text()).get('resourceType', '?')
+        except Exception:
+            resource_type = '?'
+        msg = f'No StructureMap for {resource_type} — no FML file to process this resource type'
+        print(f'  SKIP {path.name}: {msg}')
+        results.append({'file': path.name, 'map': '', 'table': '', 'status': 'SKIP', 'detail': msg})
 
 
 if __name__ == '__main__':
