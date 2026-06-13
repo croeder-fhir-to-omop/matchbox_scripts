@@ -155,7 +155,7 @@ def write_report(results, csv_rows=None):
     counts = {s: sum(1 for r in results if r['status'] == s) for s in STATUS_COLOR}
     csv_map = csv_rows or {}
     rows_html = ''
-    for r in results:
+    for r in sorted(results, key=lambda r: r['file']):
         color = STATUS_COLOR.get(r['status'], '#000')
         detail = r.get('detail', '') or ''
         root = _root_cause(detail)
