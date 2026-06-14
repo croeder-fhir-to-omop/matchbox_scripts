@@ -79,6 +79,50 @@ PATIENT_NO_GENDER = {
     "birthDate": "1990-03-20",
 }
 
+PATIENT_WHITE = {
+    "resourceType": "Patient",
+    "id": "test-white",
+    "gender": "female",
+    "birthDate": "1970-01-01",
+    "extension": [
+        {
+            "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
+            "extension": [
+                {
+                    "url": "ombCategory",
+                    "valueCoding": {
+                        "system": "urn:oid:2.16.840.1.113883.6.238",
+                        "code": "2106-3",
+                        "display": "White",
+                    },
+                }
+            ],
+        }
+    ],
+}
+
+PATIENT_HISPANIC = {
+    "resourceType": "Patient",
+    "id": "test-hispanic",
+    "gender": "male",
+    "birthDate": "1975-05-10",
+    "extension": [
+        {
+            "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
+            "extension": [
+                {
+                    "url": "ombCategory",
+                    "valueCoding": {
+                        "system": "urn:oid:2.16.840.1.113883.6.238",
+                        "code": "2135-2",
+                        "display": "Hispanic or Latino",
+                    },
+                }
+            ],
+        }
+    ],
+}
+
 ENCOUNTER_AMB = {
     "resourceType": "Encounter",
     "id": "test-amb",
@@ -269,11 +313,11 @@ class TestMeasurementMap:
 
 
 class TestPersonMapRaceEthnicity:
-    """fhir-omop-ig#1 — PersonMap must default race_concept_id and ethnicity_concept_id to 0.
+    """fhir-omop-ig#1 — PersonMap must map US Core race/ethnicity extensions and default to 0.
 
-    OMOP CDM 5.4 requires both fields as NOT NULL integers. When the source Patient
-    has no race/ethnicity (plain R4 Patient, no US Core extensions), the map must
-    emit 0 (OMOP 'Unknown') rather than leaving the fields absent.
+    OMOP CDM 5.4 requires both fields as NOT NULL integers. US Core race uses
+    urn:oid:2.16.840.1.113883.6.238 codes translated via the IG RaceClass/EthnicityClass
+    ConceptMaps. When no extension is present, the map must emit 0 (OMOP 'Unknown').
     """
 
     def test_WHEN_patient_has_no_race_SHOULD_produce_race_concept_id_0(self):
@@ -288,6 +332,20 @@ class TestPersonMapRaceEthnicity:
         assert result is not None
         assert result.get('ethnicity_concept_id') == '0', (
             f"Expected ethnicity_concept_id='0', got {result.get('ethnicity_concept_id')!r}"
+        )
+
+    def test_WHEN_patient_has_white_race_SHOULD_produce_race_concept_id_8527(self):
+        result = transform(PATIENT_WHITE, 'PersonMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('race_concept_id') == '8527', (
+            f"Expected race_concept_id='8527' (White), got {result.get('race_concept_id')!r}"
+        )
+
+    def test_WHEN_patient_has_hispanic_ethnicity_SHOULD_produce_ethnicity_concept_id_38003563(self):
+        result = transform(PATIENT_HISPANIC, 'PersonMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('ethnicity_concept_id') == '38003563', (
+            f"Expected ethnicity_concept_id='38003563' (Hispanic), got {result.get('ethnicity_concept_id')!r}"
         )
 
 
