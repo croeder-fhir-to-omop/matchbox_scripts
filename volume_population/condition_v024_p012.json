@@ -1,0 +1,29 @@
+{
+  "resourceType": "Condition",
+  "id": "vc24",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "XLAB-019",
+        "display": "Local finding 019"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp12"
+  },
+  "encounter": {
+    "reference": "Encounter/ve24"
+  },
+  "onsetDateTime": "2025-07-12"
+}

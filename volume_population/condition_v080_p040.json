@@ -1,0 +1,29 @@
+{
+  "resourceType": "Condition",
+  "id": "vc80",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "XLAB-005",
+        "display": "Local finding 005"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp40"
+  },
+  "encounter": {
+    "reference": "Encounter/ve80"
+  },
+  "onsetDateTime": "2025-09-12"
+}

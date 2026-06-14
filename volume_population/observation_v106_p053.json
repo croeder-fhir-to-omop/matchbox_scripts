@@ -1,0 +1,38 @@
+{
+  "resourceType": "Observation",
+  "id": "vo106",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "vital-signs",
+          "display": "Vital Signs"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "8867-4",
+        "display": "Heart rate"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp53"
+  },
+  "encounter": {
+    "reference": "Encounter/ve106"
+  },
+  "effectiveDateTime": "2025-08-12T09:05:00-05:00",
+  "valueQuantity": {
+    "value": 85.6,
+    "unit": "/min",
+    "system": "http://unitsofmeasure.org",
+    "code": "/min"
+  }
+}

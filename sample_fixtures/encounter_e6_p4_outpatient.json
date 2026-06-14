@@ -1,0 +1,16 @@
+{
+  "resourceType": "Encounter",
+  "id": "e6",
+  "status": "finished",
+  "class": {
+    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+    "code": "AMB"
+  },
+  "subject": {
+    "reference": "Patient/p4"
+  },
+  "period": {
+    "start": "2025-05-06T08:00:00-05:00",
+    "end": "2025-05-06T08:20:00-05:00"
+  }
+}

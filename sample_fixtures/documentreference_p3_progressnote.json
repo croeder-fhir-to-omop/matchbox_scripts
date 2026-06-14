@@ -1,0 +1,32 @@
+{
+  "resourceType": "DocumentReference",
+  "id": "dr1",
+  "status": "current",
+  "type": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "11506-3",
+        "display": "Progress note"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/p3"
+  },
+  "content": [
+    {
+      "attachment": {
+        "contentType": "text/plain",
+        "data": "UGF0aWVudCByZXBvcnRzIGltcHJvdmVkIGJyZWF0aGluZyBzaW5jZSBzdGFydGluZyBpbmhhbGVyLg=="
+      }
+    }
+  ],
+  "context": {
+    "encounter": [
+      {
+        "reference": "Encounter/e4"
+      }
+    ]
+  }
+}

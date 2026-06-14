@@ -1,0 +1,11 @@
+vocabulary_id	vocabulary_name	vocabulary_reference
+AdministrativeGender	FHIR R4 Administrative Gender	http://hl7.org/fhir/administrative-gender
+AdmitSource	HL7 Admit Source	http://terminology.hl7.org/CodeSystem/admit-source
+AllergyIntoleranceCategory	FHIR R4 Allergy Intolerance Category (allergy type)	http://hl7.org/fhir/allergy-intolerance-category
+CVX	CDC Vaccine Administered (CVX)	http://hl7.org/fhir/sid/cvx
+ConditionClinical	HL7 Condition Clinical Status	http://terminology.hl7.org/CodeSystem/condition-clinical
+DischargeDisposition	HL7 Discharge Disposition	http://terminology.hl7.org/CodeSystem/discharge-disposition
+ImmunizationOrigin	HL7 Immunization Origin	http://terminology.hl7.org/CodeSystem/immunization-origin
+IntoleranceCategory	FHIR R4 Allergy Intolerance Category (intolerance type)	http://hl7.org/fhir/allergy-intolerance-category
+RouteOfAdministration	HL7 v3 Route of Administration	http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration
+v3-ActCode	HL7 v3 Act Code	http://terminology.hl7.org/CodeSystem/v3-ActCode

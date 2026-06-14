@@ -1,0 +1,29 @@
+{
+  "resourceType": "Condition",
+  "id": "vc102",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "XLAB-010",
+        "display": "Local finding 010"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp51"
+  },
+  "encounter": {
+    "reference": "Encounter/ve102"
+  },
+  "onsetDateTime": "2025-04-12"
+}

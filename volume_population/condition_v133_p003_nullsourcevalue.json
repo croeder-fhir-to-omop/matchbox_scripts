@@ -1,0 +1,20 @@
+{
+  "resourceType": "Condition",
+  "id": "vc133",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "text": "Free-text problem with no coded value"
+  },
+  "subject": {
+    "reference": "Patient/vp3"
+  },
+  "onsetDateTime": "2025-03-03"
+}

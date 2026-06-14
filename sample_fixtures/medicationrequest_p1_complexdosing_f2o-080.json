@@ -1,0 +1,72 @@
+{
+  "resourceType": "MedicationRequest",
+  "id": "mr2",
+  "status": "active",
+  "intent": "order",
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "code": "860975",
+        "display": "24 HR metformin hydrochloride 500 MG Extended Release Oral Tablet"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/p1"
+  },
+  "encounter": {
+    "reference": "Encounter/e1"
+  },
+  "authoredOn": "2025-02-10",
+  "dosageInstruction": [
+    {
+      "sequence": 1,
+      "text": "500 mg twice daily with meals for 2 weeks, then increase",
+      "timing": {
+        "repeat": {
+          "frequency": 2,
+          "period": 1,
+          "periodUnit": "d",
+          "boundsDuration": {
+            "value": 2,
+            "unit": "wk",
+            "system": "http://unitsofmeasure.org",
+            "code": "wk"
+          }
+        }
+      },
+      "doseAndRate": [
+        {
+          "doseQuantity": {
+            "value": 500,
+            "unit": "mg",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg"
+          }
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "text": "then 1000 mg twice daily thereafter",
+      "timing": {
+        "repeat": {
+          "frequency": 2,
+          "period": 1,
+          "periodUnit": "d"
+        }
+      },
+      "doseAndRate": [
+        {
+          "doseQuantity": {
+            "value": 1000,
+            "unit": "mg",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg"
+          }
+        }
+      ]
+    }
+  ]
+}

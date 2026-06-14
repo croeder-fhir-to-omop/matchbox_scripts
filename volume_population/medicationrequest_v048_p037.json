@@ -1,0 +1,22 @@
+{
+  "resourceType": "MedicationRequest",
+  "id": "vm48",
+  "status": "active",
+  "intent": "order",
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "code": "860975",
+        "display": "24 HR metformin hydrochloride 500 MG Extended Release Oral Tablet"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp37"
+  },
+  "encounter": {
+    "reference": "Encounter/ve74"
+  },
+  "authoredOn": "2025-03-12"
+}

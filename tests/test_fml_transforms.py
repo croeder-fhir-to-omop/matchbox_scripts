@@ -28,6 +28,7 @@ HEADERS = {
 
 
 def transform(resource: dict, map_name: str) -> dict | None:
+    time.sleep(1)
     r = requests.post(
         f'{BASE_URL}/StructureMap/$transform',
         params={'source': f'{IG}/{map_name}'},
@@ -190,25 +191,6 @@ class TestPersonMapLocal:
         )
 
 
-class TestPersonMapServer:
-    """PersonMapServer with blank URL — all translate calls go to Echidna.
-
-    Echidna cannot resolve bare FHIR codes ('male', 'female') without a sourceSystem,
-    so gender_concept_id will be null/absent until Echidna coverage improves.
-    """
-
-    def test_WHEN_patient_gender_is_male_SHOULD_produce_no_gender_concept_id(self):
-        result = transform(PATIENT_MALE, 'PersonMapServer')
-        assert result is not None, 'transform returned OperationOutcome'
-        assert result.get('gender_concept_id') is None, (
-            f"Expected gender_concept_id=None (Echidna gap), got {result.get('gender_concept_id')}"
-        )
-
-    def test_WHEN_patient_gender_is_female_SHOULD_produce_no_gender_concept_id(self):
-        result = transform(PATIENT_FEMALE, 'PersonMapServer')
-        assert result is not None
-        assert result.get('gender_concept_id') is None
-
 
 ENCOUNTER_WITH_PERIOD = {
     "resourceType": "Encounter",
@@ -264,19 +246,6 @@ class TestEncounterVisitMapLocal:
             f"Expected visit_type_concept_id (NOT NULL in OMOP), got None"
         )
 
-
-class TestEncounterVisitMapServer:
-    """EncounterVisitMapServer with blank URL — Echidna path.
-
-    Echidna cannot resolve bare FHIR Act codes ('AMB', 'IMP') without sourceSystem.
-    """
-
-    def test_WHEN_encounter_class_is_AMB_SHOULD_produce_no_visit_concept_id(self):
-        result = transform(ENCOUNTER_AMB, 'EncounterVisitMapServer')
-        assert result is not None, 'transform returned OperationOutcome'
-        assert result.get('visit_concept_id') is None, (
-            f"Expected visit_concept_id=None (Echidna gap), got {result.get('visit_concept_id')}"
-        )
 
 
 class TestMeasurementMap:
@@ -874,122 +843,3 @@ class TestMedicationStatementMap:
         )
 
 
-class TestAllergyMapServer:
-    """AllergyMapServer — AllergyIntolerance → OMOP Observation via Echidna (empty-URL translate).
-
-    Verifies that observation_concept_id is populated by Echidna from the SNOMED coding,
-    in addition to the structural fields covered by TestAllergyMap.
-    """
-
-    def test_WHEN_allergy_server_is_transformed_SHOULD_not_return_operation_outcome(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
-        assert result is not None, (
-            'AllergyMapServer returned OperationOutcome — map may have a runtime error'
-        )
-
-    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_concept_id(self):
-        result = _retrying(
-            lambda: transform(ALLERGY_PEANUT, 'AllergyMapServer'),
-            passes=lambda r: r is not None and r.get('observation_concept_id') is not None,
-            attempts=3, delay=10,
-        )
-        assert result is not None
-        assert result.get('observation_concept_id') is not None, (
-            'Expected observation_concept_id from Echidna SNOMED translate; '
-            'empty-URL fallback to Echidna may not be working'
-        )
-
-    def test_WHEN_allergy_server_is_transformed_observation_concept_id_SHOULD_be_numeric(self):
-        result = _retrying(
-            lambda: transform(ALLERGY_PEANUT, 'AllergyMapServer'),
-            passes=lambda r: r is not None and r.get('observation_concept_id') is not None,
-            attempts=3, delay=10,
-        )
-        assert result is not None
-        cid = result.get('observation_concept_id')
-        assert cid is not None and str(cid).isdigit(), (
-            f"Expected numeric OMOP concept_id from Echidna, got {cid!r}"
-        )
-
-    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_type_concept_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
-        assert result is not None
-        # FML integer literals serialize as strings in FHIR JSON; accept int or str
-        assert int(str(result.get('observation_type_concept_id') or 0)) == 32817, (
-            f"Expected observation_type_concept_id=32817 (EHR), "
-            f"got {result.get('observation_type_concept_id')!r}"
-        )
-
-    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_observation_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
-        assert result is not None
-        assert result.get('observation_id') is not None
-
-    def test_WHEN_allergy_server_is_transformed_SHOULD_produce_person_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMapServer')
-        assert result is not None
-        assert result.get('person_id') is not None
-
-
-class TestMedicationMapServer:
-    """MedicationMapServer — MedicationStatement → OMOP DrugExposure via Echidna.
-
-    Verifies that drug_concept_id is populated by Echidna from the RxNorm coding,
-    in addition to the structural fields covered by TestMedicationStatementMap.
-    """
-
-    def test_WHEN_medication_server_is_transformed_SHOULD_not_return_operation_outcome(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
-        assert result is not None, (
-            'MedicationMapServer returned OperationOutcome — map may have a runtime error'
-        )
-
-    def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_concept_id(self):
-        # Echidna may return None for drug_concept_id transiently — either RxNorm
-        # cold-cache or rate-limiting after a burst of prior transform calls.
-        result = _retrying(
-            lambda: transform(MEDICATION_ASPIRIN, 'MedicationMapServer'),
-            passes=lambda r: r is not None and r.get('drug_concept_id') is not None,
-            attempts=3, delay=30,
-        )
-        assert result is not None
-        assert result.get('drug_concept_id') is not None, (
-            'Expected drug_concept_id from Echidna RxNorm translate; '
-            'empty-URL fallback to Echidna may not be working'
-        )
-
-    def test_WHEN_medication_server_is_transformed_drug_concept_id_SHOULD_be_numeric(self):
-        result = _retrying(
-            lambda: transform(MEDICATION_ASPIRIN, 'MedicationMapServer'),
-            passes=lambda r: r is not None and r.get('drug_concept_id') is not None,
-            attempts=3, delay=30,
-        )
-        assert result is not None
-        cid = result.get('drug_concept_id')
-        assert cid is not None and str(cid).isdigit(), (
-            f"Expected numeric OMOP concept_id from Echidna, got {cid!r}"
-        )
-
-    def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_type_concept_id(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
-        assert result is not None
-        # FML integer literals serialize as strings in FHIR JSON; accept int or str
-        assert int(str(result.get('drug_type_concept_id') or 0)) == 32817, (
-            f"Expected drug_type_concept_id=32817 (EHR), "
-            f"got {result.get('drug_type_concept_id')!r}"
-        )
-
-    def test_WHEN_medication_server_is_transformed_SHOULD_produce_drug_exposure_id(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
-        assert result is not None
-        assert result.get('drug_exposure_id') is not None
-
-    def test_WHEN_medication_server_is_transformed_SHOULD_produce_person_id(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
-        assert result is not None
-        assert result.get('person_id') is not None
-
-    def test_WHEN_medication_server_is_transformed_SHOULD_produce_start_date(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMapServer')
-        assert result is not None
-        assert result.get('drug_exposure_start_date') is not None

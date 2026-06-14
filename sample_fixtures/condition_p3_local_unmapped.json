@@ -1,0 +1,38 @@
+{
+  "resourceType": "Condition",
+  "id": "c5",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "XLAB-001",
+        "display": "Local custom finding XLAB-001"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/p3"
+  },
+  "encounter": {
+    "reference": "Encounter/e4"
+  },
+  "onsetDateTime": "2025-04-20"
+}

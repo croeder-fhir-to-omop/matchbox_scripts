@@ -1,0 +1,38 @@
+{
+  "resourceType": "Observation",
+  "id": "vo42",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "vital-signs",
+          "display": "Vital Signs"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "8867-4",
+        "display": "Heart rate"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp21"
+  },
+  "encounter": {
+    "reference": "Encounter/ve42"
+  },
+  "effectiveDateTime": "2025-07-12T09:05:00-05:00",
+  "valueQuantity": {
+    "value": 97.7,
+    "unit": "/min",
+    "system": "http://unitsofmeasure.org",
+    "code": "/min"
+  }
+}

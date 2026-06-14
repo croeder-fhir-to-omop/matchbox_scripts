@@ -1,0 +1,26 @@
+{
+  "resourceType": "Condition",
+  "id": "vc130",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "93974005",
+        "display": "Primary malignant neoplasm of prostate"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp19"
+  },
+  "onsetDateTime": "2025-03-02"
+}

@@ -7,6 +7,8 @@ the resource is explicitly incompatible (shown as SKIP in the report).
 """
 
 import os
+import time
+
 import requests
 
 _BASE_URL = None
@@ -30,6 +32,7 @@ class SkipResource(Exception):
 
 
 def _call(resource, map_name):
+    time.sleep(1)
     r = requests.post(
         f'{_base_url()}/StructureMap/$transform',
         params={'source': f'{_IG}/{map_name}'},
@@ -69,16 +72,8 @@ def transform_allergy(resource):
     return _call(resource, 'AllergyMap')
 
 
-def transform_allergy_server(resource):
-    return _call(resource, 'AllergyMapServer')
-
-
 def transform_encounter(resource):
     return _call(resource, 'EncounterVisitMap')
-
-
-def transform_encounter_server(resource):
-    return _call(resource, 'EncounterVisitMapServer')
 
 
 def transform_immunization(resource):
@@ -109,12 +104,6 @@ def transform_medication(resource):
     if _is_r5_medication(resource):
         raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
     return _call(resource, 'MedicationMap')
-
-
-def transform_medication_server(resource):
-    if _is_r5_medication(resource):
-        raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
-    return _call(resource, 'MedicationMapServer')
 
 
 def transform_bp_panel(resource):

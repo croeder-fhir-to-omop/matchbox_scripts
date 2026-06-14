@@ -1,0 +1,29 @@
+{
+  "resourceType": "Condition",
+  "id": "vc79",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "XLAB-003",
+        "display": "Local finding 003"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp40"
+  },
+  "encounter": {
+    "reference": "Encounter/ve79"
+  },
+  "onsetDateTime": "2025-08-11"
+}

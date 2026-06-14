@@ -12,21 +12,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
+import requests
 
 from omop_to_csv import COLUMNS as OMOP_COLUMNS
 from transforms import (
+    SkipResource,
     transform_allergy,
-    transform_allergy_server,
     transform_bp_diastolic,
     transform_bp_panel,
     transform_bp_systolic,
     transform_condition,
     transform_encounter,
-    transform_encounter_server,
     transform_immunization,
     transform_measurement,
     transform_medication,
-    transform_medication_server,
     transform_observation,
     transform_patient,
     transform_procedure,
@@ -54,8 +53,7 @@ FIXTURE_TRANSFORMS = [
     ('Patient-Pat-*.json',    transform_patient,          'person',               'PersonMap'),
 
     # 2. Visits (must exist before condition, procedure, observation, drug, measurement)
-    ('encounter_*.json',      transform_encounter,        'visit_occurrence',     'EncounterVisitMap'),
-    ('encounter_*.json',      transform_encounter_server, 'visit_occurrence',     'EncounterVisitMapServer'),
+    ('encounter_*.json',      transform_encounter,  'visit_occurrence',     'EncounterVisitMap'),
 
     # 3. Clinical records
     ('condition_*.json',      transform_condition,        'condition_occurrence', 'ConditionMap'),
@@ -74,17 +72,16 @@ FIXTURE_TRANSFORMS = [
     ('observation_*blood*.json',            transform_bp_systolic, 'measurement',  'BloodPressureSystolicMap'),
     ('observation_*blood*.json',            transform_bp_diastolic,'measurement',  'BloodPressureDiastolicMap'),
     ('observation_smoking*.json',           transform_observation, 'observation',  'ObservationMap'),
-    ('allergy_*.json',        transform_allergy,          'observation',          'AllergyMap'),
-    ('allergy_*.json',        transform_allergy_server,   'observation',          'AllergyMapServer'),
-    ('medication*.json',      transform_medication,       'drug_exposure',        'MedicationMap'),
-    ('medication*.json',      transform_medication_server,'drug_exposure',        'MedicationMapServer'),
+    ('allergy_*.json',        transform_allergy,    'observation',          'AllergyMap'),
+    ('medication*.json',      transform_medication, 'drug_exposure',        'MedicationMap'),
 ]
 
 STATUS_COLOR = {
     'OK':         '#2d8a4e',
     'SUPPRESSED': '#888',
     'WARN':       '#c07a00',
-    'SKIP':       '#c0392b',
+    'SKIP':       '#888',
+    'ERROR':      '#c0392b',
 }
 
 
@@ -123,20 +120,66 @@ def insert(con, table, row):
         return False, msg
 
 
-def _root_cause(detail):
+def _extract_codings(obj, results=None):
+    """Recursively extract all {system, code, display} dicts from FHIR resources.
+
+    Handles both CodeableConcept (coding array) and bare Coding objects
+    (e.g. Encounter.class, Quantity.system+code for unit lookups).
+    """
+    if results is None:
+        results = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == 'coding' and isinstance(v, list):
+                for coding in v:
+                    if isinstance(coding, dict) and 'code' in coding:
+                        results.append({
+                            'system': coding.get('system', ''),
+                            'code':   coding.get('code', ''),
+                            'display': coding.get('display', ''),
+                        })
+            else:
+                _extract_codings(v, results)
+        # Also capture bare Coding/Quantity objects (have system+code but no coding sub-array)
+        if 'code' in obj and 'system' in obj and 'coding' not in obj:
+            results.append({
+                'system':  obj['system'],
+                'code':    obj['code'],
+                'display': obj.get('display', ''),
+            })
+    elif isinstance(obj, list):
+        for item in obj:
+            _extract_codings(item, results)
+    return results
+
+
+def _codings_html(codings):
+    if not codings:
+        return ''
+    parts = []
+    for c in codings:
+        sys_short = c['system'].rsplit('/', 1)[-1] if c['system'] else '?'
+        display = f' &mdash; {c["display"]}' if c.get('display') else ''
+        parts.append(f'<code>{sys_short}|{c["code"]}</code>{display}')
+    return ('<br><span style="color:#555">Source codes: '
+            + ' &nbsp; '.join(parts) + '</span>')
+
+
+def _root_cause(detail, codings=None):
     if not detail:
         return ''
     if 'NOT NULL constraint' in detail:
         field = detail.split('.')[-1] if '.' in detail else detail
         interpretation = (f'<code>{field}</code> is NOT NULL but was not populated — '
-                          f'StructureMap (OMOP IG v{IG_VERSION}) may not call translate() for this field, '
-                          f'or translate() returned null (code not found on terminology server).')
+                          f'translate() returned null (code not found on terminology server).')
+        interpretation += _codings_html(codings)
     elif 'Could not convert string' in detail:
         import re
         m = re.search(r"string '([^']+)'", detail)
         val = m.group(1) if m else '?'
         interpretation = (f'StructureMap placed source code/label <code>{val}</code> '
                           f'directly into an integer concept_id field instead of translating it.')
+        interpretation += _codings_html(codings)
     elif 'violates primary key constraint' in detail:
         interpretation = ('Two source FHIR resources produced the same OMOP primary key — '
                           'they share the same FHIR resource <code>id</code> field, '
@@ -147,7 +190,7 @@ def _root_cause(detail):
         interpretation = 'matchbox transform error (see detail below).'
     else:
         interpretation = ''
-    raw = f'<br><span style="font-size:0.8em;color:#888;font-family:monospace">{detail}</span>'
+    raw = f'<br><span style="color:#888;font-family:monospace">{detail}</span>'
     return interpretation + raw
 
 
@@ -158,7 +201,7 @@ def write_report(results, csv_rows=None):
     for r in sorted(results, key=lambda r: r['file']):
         color = STATUS_COLOR.get(r['status'], '#000')
         detail = r.get('detail', '') or ''
-        root = _root_cause(detail)
+        root = _root_cause(detail, r.get('codings'))
         table = r.get('table', '')
         table_csv = csv_map.get(table)
         if table_csv:
@@ -308,12 +351,18 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
         for path in paths:
             processed.add(path.name)
             resource = json.loads(path.read_text())
+            codings = _extract_codings(resource)
             try:
                 result = transform_fn(resource)
+            except SkipResource as e:
+                msg = str(e)
+                print(f'  SKIP {path.name}: {msg}', file=sys.stderr)
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'SKIP', 'detail': msg, 'codings': codings})
+                continue
             except Exception as e:
                 msg = str(e).split('\n')[0]
-                print(f'  SKIP {path.name}: {msg}', file=sys.stderr)
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'SKIP', 'detail': msg})
+                print(f'  ERROR {path.name}: {msg}', file=sys.stderr)
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'ERROR', 'detail': msg, 'codings': codings})
                 continue
             if result is None:
                 print(f'  SUPPRESSED {path.name}')
@@ -324,7 +373,7 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
             if cols is None:
                 msg = f'unknown resourceType {resource_type!r}'
                 print(f'  SKIP {path.name}: {msg}', file=sys.stderr)
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'SKIP', 'detail': msg})
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'SKIP', 'detail': msg, 'codings': codings})
                 continue
             row = {c: result.get(c) for c in cols}
             if table == 'person':
@@ -335,9 +384,8 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'OK'})
                 csv_rows.setdefault(table, []).append(row)
             else:
-                is_server_dup = map_name.endswith('Server') and err and 'violates primary key constraint' in err
-                status = 'SKIP' if is_server_dup else 'WARN'
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err})
+                status = 'ERROR' if err and 'violates primary key constraint' in err else 'WARN'
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err, 'codings': codings})
 
     for path in sorted(fixture_dir.glob('*.json')):
         if path.name in processed:

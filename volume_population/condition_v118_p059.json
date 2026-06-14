@@ -1,0 +1,29 @@
+{
+  "resourceType": "Condition",
+  "id": "vc118",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "XLAB-018",
+        "display": "Local finding 018"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp59"
+  },
+  "encounter": {
+    "reference": "Encounter/ve118"
+  },
+  "onsetDateTime": "2025-02-12"
+}

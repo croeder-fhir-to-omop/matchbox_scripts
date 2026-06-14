@@ -1,0 +1,26 @@
+{
+  "resourceType": "Condition",
+  "id": "vc123",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "266569009",
+        "display": "Benign prostatic hyperplasia"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp5"
+  },
+  "onsetDateTime": "2025-03-01"
+}

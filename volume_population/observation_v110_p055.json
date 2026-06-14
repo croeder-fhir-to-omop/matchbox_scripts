@@ -1,0 +1,38 @@
+{
+  "resourceType": "Observation",
+  "id": "vo110",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "laboratory",
+          "display": "Laboratory"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "2160-0",
+        "display": "Creatinine [Mass/volume] in Serum or Plasma"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp55"
+  },
+  "encounter": {
+    "reference": "Encounter/ve110"
+  },
+  "effectiveDateTime": "2025-03-12T09:05:00-05:00",
+  "valueQuantity": {
+    "value": 0.6,
+    "unit": "mg/dL",
+    "system": "http://unitsofmeasure.org",
+    "code": "mg/dL"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "resourceType": "Condition",
+  "id": "vc100",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "38341003",
+        "display": "Hypertensive disorder"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/vp50"
+  },
+  "encounter": {
+    "reference": "Encounter/ve100"
+  },
+  "onsetDateTime": "2025-02-12"
+}

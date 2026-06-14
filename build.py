@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Build pipeline: IG → matchbox JAR → Docker image → restart → tests → release.
+Build pipeline: IG → matchbox JAR → Docker images → restart → tests → release.
 
 Usage:
-  python3 build.py                         # full pipeline (ig docker restart test)
+  python3 build.py                         # full pipeline (ig docker enchilada restart test)
   python3 build.py mvn                     # rebuild matchbox JAR only (skips tests)
   python3 build.py ig                      # rebuild IG only
   python3 build.py docker                  # rebuild matchbox Docker image only
+  python3 build.py enchilada               # rebuild enchilada Docker image only
   python3 build.py restart                 # restart dqd_docker (wipes matchbox-db)
   python3 build.py etl                     # re-run ETL in container; analyze etl_report.html
   python3 build.py test                    # run matchbox_scripts integration tests
@@ -22,10 +23,11 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
-REPO_ROOT     = Path(__file__).parent.parent
-IG_DIR        = REPO_ROOT / 'fhir-omop-ig'
-MATCHBOX_DIR  = REPO_ROOT / 'matchbox_docker'
-DQD_DIR       = REPO_ROOT / 'dqd_docker'
+REPO_ROOT       = Path(__file__).parent.parent
+IG_DIR          = REPO_ROOT / 'fhir-omop-ig'
+MATCHBOX_DIR    = REPO_ROOT / 'matchbox_docker'
+DQD_DIR         = REPO_ROOT / 'dqd_docker'
+ENCHILADA_DIR   = REPO_ROOT / 'enchilada'
 SCRIPTS_DIR   = Path(__file__).parent
 PACKAGE_SRC   = IG_DIR / 'output' / 'package.tgz'
 PACKAGE_DST   = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.1.tgz'
@@ -34,8 +36,8 @@ PYTEST        = SCRIPTS_DIR / 'env' / 'bin' / 'pytest'
 DQD_CONTAINER = 'dqd_docker-dqd-1'
 ETL_REPORT    = SCRIPTS_DIR / 'etl_report.html'
 
-STEPS = ['mvn', 'ig', 'docker', 'restart', 'etl', 'test', 'release']
-DEFAULT_STEPS = ['ig', 'docker', 'restart', 'test']
+STEPS = ['mvn', 'ig', 'docker', 'enchilada', 'restart', 'stop', 'etl', 'test', 'release']
+DEFAULT_STEPS = ['ig', 'docker', 'enchilada', 'restart', 'test']
 
 
 def run(cmd, cwd=None, check=True):
@@ -58,16 +60,49 @@ def step_ig():
         '-v', f'{IG_DIR}:/workspace',
         '-w', '/workspace',
         'ghcr.io/bonfhir/ig-toolbox:latest',
-        'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', 'n/a',
+        'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', 'https://tx.fhir.org',
     ])
     print(f'\n>>> cp {PACKAGE_SRC} {PACKAGE_DST}')
     shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
     print('IG package copied.')
 
 
+def _strip_package_deps(tgz_path: Path) -> None:
+    """Repack a FHIR package tgz with an empty dependencies map.
+
+    HAPI FHIR fetches transitive dependencies from the network when installing
+    a package.  For packages we bundle locally, we clear the dependency list so
+    HAPI never makes those network calls — the bundles themselves are all we need.
+    """
+    import json, tarfile, io
+    print(f'  Stripping dependencies from {tgz_path.name}', flush=True)
+    members = []
+    contents = {}
+    with tarfile.open(tgz_path, 'r:gz') as tf:
+        for member in tf.getmembers():
+            data = tf.extractfile(member)
+            contents[member.name] = (member, data.read() if data else b'')
+    pkg_key = next(k for k in contents if k.endswith('package.json'))
+    member, raw = contents[pkg_key]
+    pkg = json.loads(raw)
+    pkg['dependencies'] = {}
+    contents[pkg_key] = (member, json.dumps(pkg, indent=2).encode())
+    with tarfile.open(tgz_path, 'w:gz') as tf:
+        for name, (member, data) in contents.items():
+            member.size = len(data)
+            tf.addfile(member, io.BytesIO(data))
+
+
 def step_docker():
     print('\n=== Building croeder/matchbox:latest Docker image ===')
+    for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
+        _strip_package_deps(pkg)
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=MATCHBOX_DIR)
+
+
+def step_enchilada():
+    print('\n=== Building enchilada Docker image ===')
+    run(['docker', 'compose', 'build', 'enchilada'], cwd=DQD_DIR)
 
 
 def step_release():
@@ -91,25 +126,37 @@ def step_restart():
     ])
 
 
+def step_stop():
+    print('\n=== Stopping dqd_docker containers (frees memory) ===')
+    run(['docker', 'compose', 'stop'], cwd=DQD_DIR, check=False)
+
+
+ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_samples.html'
+
 def step_etl():
     print('\n=== Re-running ETL in dqd container ===')
-    # Use a temp DB path so we don't conflict with the DQD Shiny app, which
-    # holds a lock on the live /omop/omop.ddb while it's serving queries.
-    tmp_db   = '/tmp/omop_etl.ddb'
-    tmp_csv  = '/tmp/omop_etl_csv'
-    tmp_report = '/tmp/etl_report.html'  # REPORT_PATH = dirname(DB_PATH)/etl_report.html
-    run(['docker', 'exec', DQD_CONTAINER,
-         'bash', '-c',
-         f'rm -f {tmp_db} && OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
-         f'python3 /etl/load_duckdb.py --fixtures-dir test_files sample_fixtures'])
+    # REPORT_PATH = dirname(DB_PATH)/etl_report.html, so use subdirs to get separate reports.
+    runs = [
+        ('test_files',      '/tmp/etl_test/omop.ddb',    '/tmp/etl_test_csv',    '/tmp/etl_test/etl_report.html',    ETL_REPORT),
+        ('sample_fixtures', '/tmp/etl_samples/omop.ddb', '/tmp/etl_samples_csv', '/tmp/etl_samples/etl_report.html', ETL_REPORT_SAMPLES),
+    ]
+    for fixtures_dir, tmp_db, tmp_csv, tmp_report, local_report in runs:
+        print(f'\n--- {fixtures_dir} ---')
+        run(['docker', 'exec', DQD_CONTAINER,
+             'bash', '-c',
+             f'mkdir -p $(dirname {tmp_db}) && rm -f {tmp_db} && '
+             f'OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
+             f'python3 /etl/load_duckdb.py --fixtures-dir {fixtures_dir}'])
 
-    print(f'\n>>> docker cp {DQD_CONTAINER}:{tmp_report} {ETL_REPORT}')
-    subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:{tmp_report}', str(ETL_REPORT)], check=True)
+        print(f'\n>>> docker cp {DQD_CONTAINER}:{tmp_report} {local_report}')
+        subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:{tmp_report}', str(local_report)], check=True)
 
-    _analyze_report(ETL_REPORT)
+        print(f'\n--- Report: {local_report.name} ---')
+        _analyze_report(local_report)
 
     if platform.system() == 'Darwin':
         subprocess.run(['open', str(ETL_REPORT)])
+        subprocess.run(['open', str(ETL_REPORT_SAMPLES)])
 
 
 def _analyze_report(path):
@@ -172,13 +219,15 @@ def step_test():
 
 
 STEP_FNS = {
-    'mvn':     step_mvn,
-    'ig':      step_ig,
-    'docker':  step_docker,
-    'restart': step_restart,
-    'etl':     step_etl,
-    'test':    step_test,
-    'release': step_release,
+    'mvn':       step_mvn,
+    'ig':        step_ig,
+    'docker':    step_docker,
+    'enchilada': step_enchilada,
+    'restart':   step_restart,
+    'stop':      step_stop,
+    'etl':       step_etl,
+    'test':      step_test,
+    'release':   step_release,
 }
 
 
@@ -233,16 +282,30 @@ def _matchbox_image_stale():
     return _max_mtime([MATCHBOX_DIR]) > _image_mtime('croeder/matchbox:latest')
 
 
+def _enchilada_image_stale():
+    """True if enchilada sources or supplemental TSV files are newer than the enchilada image."""
+    sources = [
+        ENCHILADA_DIR,
+        SCRIPTS_DIR / 'concept_extra.tsv',
+        SCRIPTS_DIR / 'concept_relationship_extra.tsv',
+        SCRIPTS_DIR / 'vocabulary_extra.tsv',
+    ]
+    return _max_mtime(sources) > _image_mtime('dqd_docker-enchilada:latest')
+
+
 def _dqd_image_stale():
     """True if ETL sources are newer than the local dqd image."""
-    sources = [
-        SCRIPTS_DIR / 'transforms.py',
-        SCRIPTS_DIR / 'load_duckdb.py',
-        SCRIPTS_DIR / 'omop_to_csv.py',
-        SCRIPTS_DIR / 'ddl',
-        DQD_DIR,
-    ] + list((SCRIPTS_DIR / 'test_files').glob('*.json'))
-      + list((SCRIPTS_DIR / 'sample_fixtures').glob('*.json'))
+    sources = (
+        [
+            SCRIPTS_DIR / 'transforms.py',
+            SCRIPTS_DIR / 'load_duckdb.py',
+            SCRIPTS_DIR / 'omop_to_csv.py',
+            SCRIPTS_DIR / 'ddl',
+            DQD_DIR,
+        ]
+        + list((SCRIPTS_DIR / 'test_files').glob('*.json'))
+        + list((SCRIPTS_DIR / 'sample_fixtures').glob('*.json'))
+    )
     return _max_mtime(sources) > _image_mtime('croeder/dqd:latest')
 
 
@@ -257,11 +320,13 @@ def _rebuild_and_reload_dqd():
 
 # Each entry: (human label, stale_check_fn, auto_fix_fn)
 STEP_PREREQS = {
-    'docker':  [('fhir-omop-ig package',   _ig_stale,             step_ig)],
-    'restart': [('croeder/matchbox image', _matchbox_image_stale, step_docker)],
-    'test':    [('croeder/matchbox image', _matchbox_image_stale, step_docker)],
-    'etl':     [('croeder/dqd image',      _dqd_image_stale,      _rebuild_and_reload_dqd)],
-    'release': [('fhir-omop-ig package',   _ig_stale,             step_ig)],
+    'docker':    [('fhir-omop-ig package',      _ig_stale,              step_ig)],
+    'restart':   [('croeder/matchbox image',    _matchbox_image_stale,  step_docker),
+                  ('dqd_docker-enchilada image', _enchilada_image_stale, step_enchilada)],
+    'test':      [('croeder/matchbox image',    _matchbox_image_stale,  step_docker),
+                  ('dqd_docker-enchilada image', _enchilada_image_stale, step_enchilada)],
+    'etl':       [('croeder/dqd image',         _dqd_image_stale,       _rebuild_and_reload_dqd)],
+    'release':   [('fhir-omop-ig package',      _ig_stale,              step_ig)],
 }
 
 
