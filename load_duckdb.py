@@ -276,7 +276,10 @@ def _root_cause(detail, codings=None):
     return interpretation + raw
 
 
-def write_report(results, csv_rows=None):
+def write_report(results, csv_rows=None, title=None):
+    if title is None:
+        title = 'FHIR &rarr; OMOP ETL Report'
+    page_title = title.replace('&rarr;', '→').replace('&mdash;', '—')
     counts = {s: sum(1 for r in results if r['status'] == s) for s in STATUS_COLOR}
     csv_map = csv_rows or {}
     rows_html = ''
@@ -311,7 +314,7 @@ def write_report(results, csv_rows=None):
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>ETL Report</title>
+<title>{page_title}</title>
 <style>
   body {{ font-family: sans-serif; margin: 2em; background: #f9f9f9; }}
   h1 {{ color: #333; }}
@@ -328,7 +331,7 @@ def write_report(results, csv_rows=None):
   code {{ background:#eee; padding:1px 4px; border-radius:3px; font-size:0.9em; }}
 </style>
 </head><body>
-<h1>FHIR &rarr; OMOP ETL Report</h1>
+<h1>{title}</h1>
 <p>Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
 <div class="note">
   <strong>Known limitation — OMOP IG StructureMaps v{IG_VERSION}:</strong>
@@ -441,7 +444,10 @@ def run(fixture_dirs=None, fhir_version='r4'):
     con.close()
     print(f'Done. Database written to {DB_PATH}')
     write_csvs(csv_rows)
-    write_report(results, csv_rows)
+    dir_names = ' '.join(Path(d).name for d in fixture_dirs)
+    fixture_label = 'Sample Fixtures' if 'sample' in dir_names else 'Test Files'
+    report_title = f'FHIR {fhir_version.upper()} &rarr; OMOP ETL Report &mdash; {fixture_label}'
+    write_report(results, csv_rows, title=report_title)
 
 
 def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=None):

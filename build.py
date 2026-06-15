@@ -206,6 +206,11 @@ def step_stop():
 ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_samples.html'
 
 def step_etl():
+    # Ensure the dqd container for this profile is running the current image.
+    # This is a no-op if already up-to-date, but catches the case where the
+    # other profile's ETL rebuilt the shared image without restarting this container.
+    dqd_svc = 'dqd-r5' if _FHIR_VERSION == 'r5' else 'dqd'
+    run(['docker', 'compose', '--profile', _FHIR_VERSION, 'up', '-d', '--no-deps', dqd_svc], cwd=DQD_DIR)
     print('\n=== Re-running ETL in dqd container ===')
     test_dir, sample_dir = fixture_dirs(_FHIR_VERSION)
     # REPORT_PATH = dirname(DB_PATH)/etl_report.html, so use subdirs to get separate reports.
