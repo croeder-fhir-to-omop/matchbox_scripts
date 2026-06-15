@@ -32,7 +32,7 @@ SCRIPTS_DIR   = Path(__file__).parent
 PACKAGE_SRC   = IG_DIR / 'output' / 'package.tgz'
 PACKAGE_DST   = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.1.tgz'
 MATCHBOX_SRC  = REPO_ROOT / 'matchbox' / 'matchbox-server'
-PYTEST        = SCRIPTS_DIR / 'env' / 'bin' / 'pytest'
+PYTEST        = [SCRIPTS_DIR / 'env' / 'bin' / 'python3', '-m', 'pytest']
 DQD_CONTAINER = 'dqd_docker-dqd-1'
 ETL_REPORT    = SCRIPTS_DIR / 'etl_report.html'
 
@@ -265,7 +265,7 @@ def _analyze_report(path):
 
 def step_test():
     print('\n=== Running integration tests ===')
-    run([PYTEST, 'tests/test_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR)
+    run([*PYTEST, 'tests/test_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR)
 
 
 STEP_FNS = {
