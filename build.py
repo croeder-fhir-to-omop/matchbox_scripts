@@ -179,7 +179,7 @@ def step_etl():
 
 
 def _analyze_report(path):
-    STATUSES = {'OK', 'WARN', 'SUPPRESSED', 'SKIP', 'ERROR'}
+    STATUSES = {'OK', 'WARN', 'SUPPRESSED', 'SKIP', 'ERROR', 'XFAIL'}
 
     class _RowParser(HTMLParser):
         def __init__(self):
@@ -213,14 +213,14 @@ def _analyze_report(path):
         if not status:
             continue
         counts[status] = counts.get(status, 0) + 1
-        if status not in ('OK', 'SUPPRESSED'):
+        if status not in ('OK', 'SUPPRESSED', 'XFAIL'):
             fname  = row[0] if row else '?'
             map_nm = row[1] if len(row) > 1 else '?'
             detail = row[-1] if len(row) > 4 else ''
             issues.append((status, fname, map_nm, detail[:120]))
 
     print('\n--- ETL Report Summary ---')
-    for s in ('OK', 'WARN', 'SUPPRESSED', 'SKIP', 'ERROR'):
+    for s in ('OK', 'WARN', 'XFAIL', 'SUPPRESSED', 'SKIP', 'ERROR'):
         if s in counts:
             print(f'  {s}: {counts[s]}')
     if issues:

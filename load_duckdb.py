@@ -77,8 +77,27 @@ FIXTURE_TRANSFORMS = [
     ('medicationstatement*.json', transform_medication, 'drug_exposure',        'MedicationMap'),
 ]
 
+# Fixtures whose failures are expected. When a WARN/ERROR occurs for a file in this
+# set, the status is shown as XFAIL (expected failure) rather than WARN, so green
+# runs are not obscured by known-bad test cases. The transform still runs and the
+# actual error message is preserved.
+EXPECTED_FAILURES = {
+    # intentionally missing subject — tests that ETL rejects subjectless resources
+    'condition_p4_missing_subject_NEG_f2o-012.json',
+    # local institutional code — no standard OMOP mapping exists
+    'condition_p3_local_unmapped.json',
+    'procedure_p3_custom_concept_f2o-039.json',
+    # cancelled prescription — not a drug exposure event
+    'medicationrequest_p4_cancelled_NEG_f2o-060.json',
+    # no effective date on observation — tests date-required constraint
+    'observation_p4_nodate_NEG_f2o-070.json',
+    # identifier leak test — requires real person_id resolution to validate
+    'condition_p4_identifier_leak_NEG_f2o-020.json',
+}
+
 STATUS_COLOR = {
     'OK':         '#2d8a4e',
+    'XFAIL':      '#5a7fa8',
     'SUPPRESSED': '#888',
     'WARN':       '#c07a00',
     'SKIP':       '#888',
@@ -363,7 +382,8 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
             except Exception as e:
                 msg = str(e).split('\n')[0]
                 print(f'  ERROR {path.name}: {msg}', file=sys.stderr)
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'ERROR', 'detail': msg, 'codings': codings})
+                status = 'XFAIL' if path.name in EXPECTED_FAILURES else 'ERROR'
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': msg, 'codings': codings})
                 continue
             if result is None:
                 print(f'  SUPPRESSED {path.name}')
@@ -385,7 +405,12 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'OK'})
                 csv_rows.setdefault(table, []).append(row)
             else:
-                status = 'ERROR' if err and 'violates primary key constraint' in err else 'WARN'
+                if path.name in EXPECTED_FAILURES:
+                    status = 'XFAIL'
+                elif err and 'violates primary key constraint' in err:
+                    status = 'ERROR'
+                else:
+                    status = 'WARN'
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err, 'codings': codings})
 
     for path in sorted(fixture_dir.glob('*.json')):

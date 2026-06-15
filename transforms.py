@@ -47,7 +47,6 @@ def _call(resource, map_name):
 
 
 def transform_condition(resource):
-    # what is this 'refuted' business? TODO
     ver_status = (
         resource.get('verificationStatus', {})
         .get('coding', [{}])[0]
