@@ -36,8 +36,20 @@ PACKAGE_SRC   = IG_DIR / 'output' / 'package.tgz'
 PACKAGE_DST   = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.1.tgz'
 MATCHBOX_SRC  = REPO_ROOT / 'matchbox' / 'matchbox-server'
 PYTEST        = [SCRIPTS_DIR / 'env' / 'bin' / 'python3', '-m', 'pytest']
-DQD_CONTAINER = 'dqd_docker-dqd-1'
 ETL_REPORT    = SCRIPTS_DIR / 'etl_report.html'
+
+
+def _dqd_container() -> str:
+    return 'dqd_docker-dqd-r5-1' if _FHIR_VERSION == 'r5' else 'dqd_docker-dqd-1'
+
+
+def _matchbox_image() -> str:
+    return f'croeder/matchbox:{_FHIR_VERSION}'
+
+
+def _matchbox_health_url() -> str:
+    port = 8082 if _FHIR_VERSION == 'r5' else 8080
+    return f'http://localhost:{port}/matchboxv3/actuator/health'
 
 STEPS = ['mvn', 'ig', 'docker', 'enchilada', 'restart', 'stop', 'etl', 'test', 'release']
 DEFAULT_STEPS = ['ig', 'docker', 'enchilada', 'restart', 'test']
@@ -144,10 +156,11 @@ def _strip_package_deps(tgz_path: Path) -> None:
 
 
 def step_docker():
-    print('\n=== Building croeder/matchbox:latest Docker image ===')
+    svc = 'matchbox-r5' if _FHIR_VERSION == 'r5' else 'matchbox'
+    print(f'\n=== Building {_matchbox_image()} Docker image ===')
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=MATCHBOX_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', svc], cwd=MATCHBOX_DIR)
 
 
 def step_enchilada():
@@ -157,29 +170,37 @@ def step_enchilada():
 
 def step_release():
     print('\n=== Building and pushing all release images ===')
-    print('--- matchbox ---')
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=MATCHBOX_DIR)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=MATCHBOX_DIR)
+    print('--- matchbox (r4) ---')
+    for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
+        _strip_package_deps(pkg)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox'], cwd=MATCHBOX_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push', 'matchbox'], cwd=MATCHBOX_DIR)
+    print('--- matchbox (r5) ---')
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox-r5'], cwd=MATCHBOX_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push', 'matchbox-r5'], cwd=MATCHBOX_DIR)
     print('--- dqd ---')
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=DQD_DIR)
 
 
 def step_restart():
-    print('\n=== Restarting dqd_docker (down -v to wipe matchbox-db, force IG reload) ===')
-    run(['docker', 'compose', 'down', '-v'], cwd=DQD_DIR, check=False)
-    run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
-    print('Waiting for matchbox to become healthy...')
+    profile = _FHIR_VERSION
+    print(f'\n=== Restarting dqd_docker --profile {profile} (down -v to wipe matchbox-db, force IG reload) ===')
+    run(['docker', 'compose', '--profile', profile, 'down', '-v'], cwd=DQD_DIR, check=False)
+    run(['docker', 'compose', '--profile', profile, 'up', '-d'], cwd=DQD_DIR)
+    health_url = _matchbox_health_url()
+    print(f'Waiting for matchbox to become healthy ({health_url})...')
     run([
         'bash', '-c',
-        'until curl -sf http://localhost:8080/matchboxv3/actuator/health | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
+        f'until curl -sf {health_url} | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
     ])
     step_etl()
 
 
 def step_stop():
-    print('\n=== Stopping dqd_docker containers (frees memory) ===')
-    run(['docker', 'compose', 'stop'], cwd=DQD_DIR, check=False)
+    profile = _FHIR_VERSION
+    print(f'\n=== Stopping dqd_docker --profile {profile} containers (frees memory) ===')
+    run(['docker', 'compose', '--profile', profile, 'stop'], cwd=DQD_DIR, check=False)
 
 
 ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_samples.html'
@@ -194,18 +215,19 @@ def step_etl():
     ]
     for fixtures_dir, tmp_db, tmp_csv, tmp_report, local_report in runs:
         print(f'\n--- {fixtures_dir} ---')
-        run(['docker', 'exec', DQD_CONTAINER,
+        container = _dqd_container()
+        run(['docker', 'exec', container,
              'bash', '-c',
              f'mkdir -p $(dirname {tmp_db}) && rm -f {tmp_db} && '
              f'OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
              f'python3 /etl/load_duckdb.py --fixtures-dir {fixtures_dir}'])
 
-        print(f'\n>>> docker cp {DQD_CONTAINER}:{tmp_report} {local_report}')
-        subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:{tmp_report}', str(local_report)], check=True)
+        print(f'\n>>> docker cp {container}:{tmp_report} {local_report}')
+        subprocess.run(['docker', 'cp', f'{container}:{tmp_report}', str(local_report)], check=True)
 
         # Also publish each report to /omop so it's visible at localhost:8088.
         omop_dest = '/omop/' + local_report.name
-        run(['docker', 'exec', DQD_CONTAINER, 'cp', tmp_report, omop_dest])
+        run(['docker', 'exec', container, 'cp', tmp_report, omop_dest])
 
         print(f'\n--- Report: {local_report.name} ---')
         _analyze_report(local_report)
@@ -223,7 +245,7 @@ def step_etl():
         '<a href="etl_report_samples.html">etl_report_samples.html — sample_fixtures</a>\n'
         '</body></html>\n'
     )
-    subprocess.run(['docker', 'cp', str(index_path), f'{DQD_CONTAINER}:/omop/index.html'], check=True)
+    subprocess.run(['docker', 'cp', str(index_path), f'{_dqd_container()}:/omop/index.html'], check=True)
 
     if platform.system() == 'Darwin':
         subprocess.run(['open', str(ETL_REPORT)])
@@ -353,7 +375,7 @@ def _ig_stale():
 
 def _matchbox_image_stale():
     """True if matchbox_docker/ sources are newer than the local matchbox image."""
-    return _max_mtime([MATCHBOX_DIR]) > _image_mtime('croeder/matchbox:latest')
+    return _max_mtime([MATCHBOX_DIR]) > _image_mtime(_matchbox_image())
 
 
 def _enchilada_image_stale():
@@ -388,11 +410,12 @@ def _dqd_image_stale():
 
 def _rebuild_and_reload_dqd():
     """Build dqd image locally (no push) and recreate the dqd container."""
+    dqd_svc = 'dqd-r5' if _FHIR_VERSION == 'r5' else 'dqd'
     print('\n=== [auto] dqd sources changed — rebuilding image (local only) ===')
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
     print('\n=== [auto] Reloading dqd container ===')
     # --no-deps: don't touch matchbox; recreates dqd only if image changed
-    run(['docker', 'compose', 'up', '-d', '--no-deps', 'dqd'], cwd=DQD_DIR)
+    run(['docker', 'compose', '--profile', _FHIR_VERSION, 'up', '-d', '--no-deps', dqd_svc], cwd=DQD_DIR)
 
 
 # Each entry: (human label, stale_check_fn, auto_fix_fn)
