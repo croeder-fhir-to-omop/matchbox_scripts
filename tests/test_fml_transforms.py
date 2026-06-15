@@ -2,6 +2,7 @@
 Integration tests for FHIR→OMOP StructureMap transforms via matchbox server.
 
 Requires a running matchbox server (MATCHBOX_URL env var or default http://localhost:8080).
+R5 tests require the R5 matchbox (MATCHBOX_R5_URL env var or default http://localhost:8082).
 
 Issues:
   matchbox_scripts#1  https://github.com/croeder-fhir-to-omop/matchbox_scripts/issues/1
@@ -18,7 +19,8 @@ import time
 import pytest
 import requests
 
-BASE_URL = os.environ.get('MATCHBOX_URL', 'http://localhost:8080') + '/matchboxv3/fhir'
+BASE_URL    = os.environ.get('MATCHBOX_URL',    'http://localhost:8080') + '/matchboxv3/fhir'
+BASE_URL_R5 = os.environ.get('MATCHBOX_R5_URL', 'http://localhost:8082') + '/matchboxv3/fhir'
 IG = 'http://hl7.org/fhir/uv/omop/StructureMap'
 
 HEADERS = {
@@ -31,6 +33,23 @@ def transform(resource: dict, map_name: str) -> dict | None:
     time.sleep(1)
     r = requests.post(
         f'{BASE_URL}/StructureMap/$transform',
+        params={'source': f'{IG}/{map_name}'},
+        headers=HEADERS,
+        json=resource,
+        timeout=30,
+    )
+    r.raise_for_status()
+    result = r.json()
+    if result.get('resourceType') == 'OperationOutcome':
+        return None
+    return result
+
+
+def transform_r5(resource: dict, map_name: str) -> dict | None:
+    """Same as transform() but targets the R5 matchbox on BASE_URL_R5."""
+    time.sleep(1)
+    r = requests.post(
+        f'{BASE_URL_R5}/StructureMap/$transform',
         params={'source': f'{IG}/{map_name}'},
         headers=HEADERS,
         json=resource,
@@ -905,4 +924,142 @@ class TestMedicationStatementMap:
             'Expected drug_exposure_start_date from effectiveDateTime'
         )
 
+
+# =============================================================================
+# R5 tests — require the R5 matchbox on port 8082 (MATCHBOX_R5_URL env var)
+# These tests will fail until the R5 IG is built and the R5 matchbox is running.
+# =============================================================================
+
+MEDICATION_ASPIRIN_R5 = {
+    "resourceType": "MedicationStatement",
+    "id": "test-aspirin-r5",
+    "status": "recorded",
+    "medication": {
+        "concept": {
+            "coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin"}]
+        }
+    },
+    "subject": {"reference": "Patient/1"},
+    "effectiveDateTime": "2020-03-15",
+}
+
+MEDICATION_REQUEST_METFORMIN_R5 = {
+    "resourceType": "MedicationRequest",
+    "id": "test-metformin-r5",
+    "status": "active",
+    "intent": "order",
+    "medication": {
+        "concept": {
+            "coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "860975", "display": "Metformin"}]
+        }
+    },
+    "subject": {"reference": "Patient/1"},
+    "encounter": {"reference": "Encounter/1"},
+    "authoredOn": "2020-03-15",
+}
+
+CONDITION_FEVER_R5 = {
+    "resourceType": "Condition",
+    "id": "test-fever-r5",
+    "clinicalStatus": {
+        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]
+    },
+    "code": {
+        "coding": [{"system": "http://snomed.info/sct", "code": "386661006", "display": "Fever"}]
+    },
+    "subject": {"reference": "Patient/1"},
+    "encounter": {"reference": "Encounter/1"},
+    "onsetDateTime": "2020-03-15",
+    "recordedDate": "2020-03-15",
+}
+
+
+class TestR5MedicationStatementMap:
+    """MedicationStatementMapR5 handles FHIR R5 medication.concept (CodeableReference).
+
+    R5 replaces the R4 choice type (medicationCodeableConcept | medicationReference)
+    with a unified CodeableReference at medication.concept.coding.
+    """
+
+    def test_WHEN_r5_medication_statement_transformed_SHOULD_return_drug_exposure(self):
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        assert result is not None, (
+            'MedicationStatementMapR5 returned OperationOutcome — map may be missing or have error'
+        )
+
+    def test_WHEN_r5_medication_statement_transformed_SHOULD_produce_drug_concept_id(self):
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        assert result is not None
+        did = result.get('drug_concept_id')
+        assert did is not None, 'Expected drug_concept_id from medication.concept.coding translate()'
+
+    def test_WHEN_r5_medication_statement_transformed_SHOULD_produce_drug_exposure_id(self):
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        assert result is not None
+        assert result.get('drug_exposure_id') is not None
+
+    def test_WHEN_r5_medication_statement_transformed_SHOULD_produce_start_date(self):
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        assert result is not None
+        assert result.get('drug_exposure_start_date') is not None, (
+            'Expected drug_exposure_start_date from effectiveDateTime'
+        )
+
+    def test_WHEN_r5_medication_statement_transformed_SHOULD_have_drug_source_value(self):
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        assert result is not None
+        src = result.get('drug_source_value')
+        assert src == '1191', f'Expected drug_source_value=1191 (RxNorm code), got {src!r}'
+
+
+class TestR5MedicationRequestMap:
+    """MedicationRequestMapR5 handles FHIR R5 MedicationRequest.medication.concept."""
+
+    def test_WHEN_r5_medication_request_transformed_SHOULD_return_drug_exposure(self):
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        assert result is not None, (
+            'MedicationRequestMapR5 returned OperationOutcome — map may be missing'
+        )
+
+    def test_WHEN_r5_medication_request_transformed_SHOULD_produce_drug_concept_id(self):
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        assert result is not None
+        assert result.get('drug_concept_id') is not None, (
+            'Expected drug_concept_id from medication.concept.coding translate()'
+        )
+
+    def test_WHEN_r5_medication_request_transformed_SHOULD_produce_start_date(self):
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        assert result is not None
+        assert result.get('drug_exposure_start_date') is not None
+
+    def test_WHEN_r5_medication_request_transformed_SHOULD_have_drug_source_value(self):
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        assert result is not None
+        src = result.get('drug_source_value')
+        assert src == '860975', f'Expected drug_source_value=860975 (Metformin RxNorm), got {src!r}'
+
+
+class TestR5ConditionMap:
+    """ConditionMapR5 — Condition resource paths are backward-compatible with R4 structure."""
+
+    def test_WHEN_r5_condition_transformed_SHOULD_return_condition_occurrence(self):
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        assert result is not None, 'ConditionMapR5 returned OperationOutcome'
+
+    def test_WHEN_r5_condition_transformed_SHOULD_have_condition_concept_id(self):
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        assert result is not None
+        cid = result.get('condition_concept_id')
+        assert cid is not None, 'Expected condition_concept_id from code.coding translate()'
+
+    def test_WHEN_r5_condition_transformed_SHOULD_have_start_date(self):
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        assert result is not None
+        assert result.get('condition_start_date') is not None
+
+    def test_WHEN_r5_condition_transformed_SHOULD_have_type_concept_id_32817(self):
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        assert result is not None
+        assert str(result.get('condition_type_concept_id')) == '32817'
 

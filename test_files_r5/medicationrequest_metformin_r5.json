@@ -1,0 +1,14 @@
+{
+  "resourceType": "MedicationRequest",
+  "id": "example-metformin-r5",
+  "status": "active",
+  "intent": "order",
+  "medication": {
+    "concept": {
+      "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "860975", "display": "Metformin" }]
+    }
+  },
+  "subject": { "reference": "Patient/1" },
+  "encounter": { "reference": "Encounter/1" },
+  "authoredOn": "2020-03-15"
+}
