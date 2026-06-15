@@ -8,8 +8,8 @@
   "code": {
     "coding": [{ "system": "http://loinc.org", "code": "29463-7", "display": "Body weight" }]
   },
-  "subject": { "reference": "Patient/example" },
-  "encounter": { "reference": "Encounter/example" },
+  "subject": { "reference": "Patient/1" },
+  "encounter": { "reference": "Encounter/1" },
   "effectiveDateTime": "2020-03-15",
   "valueQuantity": { "value": 72, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg" }
 }

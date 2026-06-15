@@ -1,6 +1,6 @@
 {
   "resourceType": "Patient",
-  "id": "example-us-core",
+  "id": "3",
   "extension": [
     {
       "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",

@@ -12,13 +12,13 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p2"
+    "reference": "Patient/2"
   },
   "context": {
-    "reference": "Encounter/e3"
+    "reference": "Encounter/3"
   },
   "informationSource": {
-    "reference": "Patient/p2"
+    "reference": "Patient/2"
   },
   "effectiveDateTime": "2025-03-15"
 }

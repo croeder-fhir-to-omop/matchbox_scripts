@@ -11,8 +11,8 @@
   "code": {
     "coding": [{ "system": "http://snomed.info/sct", "code": "000001", "display": "Bogus condition" }]
   },
-  "subject": { "reference": "Patient/example" },
-  "encounter": { "reference": "Encounter/example" },
+  "subject": { "reference": "Patient/1" },
+  "encounter": { "reference": "Encounter/1" },
   "onsetDateTime": "2020-03-15",
   "recordedDate": "2020-03-15"
 }

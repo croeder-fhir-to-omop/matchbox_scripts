@@ -12,7 +12,7 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p3"
+    "reference": "Patient/3"
   },
   "content": [
     {
@@ -25,7 +25,7 @@
   "context": {
     "encounter": [
       {
-        "reference": "Encounter/e4"
+        "reference": "Encounter/4"
       }
     ]
   }

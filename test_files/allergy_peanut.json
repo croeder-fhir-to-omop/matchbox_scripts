@@ -13,7 +13,7 @@
   "code": {
     "coding": [{ "system": "http://snomed.info/sct", "code": "91935009", "display": "Allergy to peanuts" }]
   },
-  "patient": { "reference": "Patient/example" },
-  "encounter": { "reference": "Encounter/example" },
+  "patient": { "reference": "Patient/1" },
+  "encounter": { "reference": "Encounter/1" },
   "recordedDate": "2020-03-15"
 }

@@ -31,10 +31,10 @@
     ]
   },
   "subject": {
-    "reference": "Patient/example"
+    "reference": "Patient/1"
   },
   "encounter": {
-    "reference": "Encounter/example"
+    "reference": "Encounter/1"
   },
   "onsetDateTime": "2020-03-15",
   "recordedDate": "2020-03-15"

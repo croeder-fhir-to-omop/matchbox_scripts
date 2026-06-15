@@ -8,8 +8,8 @@
   "code": {
     "coding": [{ "system": "http://loinc.org", "code": "72166-2", "display": "Tobacco smoking status" }]
   },
-  "subject": { "reference": "Patient/example" },
-  "encounter": { "reference": "Encounter/example" },
+  "subject": { "reference": "Patient/1" },
+  "encounter": { "reference": "Encounter/1" },
   "effectiveDateTime": "2020-03-15",
   "valueCodeableConcept": {
     "coding": [{ "system": "http://snomed.info/sct", "code": "266919005", "display": "Never smoked tobacco" }]

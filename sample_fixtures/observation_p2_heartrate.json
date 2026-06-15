@@ -23,10 +23,10 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p2"
+    "reference": "Patient/2"
   },
   "encounter": {
-    "reference": "Encounter/e3"
+    "reference": "Encounter/3"
   },
   "effectiveDateTime": "2025-03-15T13:05:00-05:00",
   "valueQuantity": {

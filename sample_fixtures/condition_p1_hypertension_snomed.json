@@ -29,10 +29,10 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p1"
+    "reference": "Patient/1"
   },
   "encounter": {
-    "reference": "Encounter/e2"
+    "reference": "Encounter/2"
   },
   "onsetDateTime": "2025-06-01"
 }

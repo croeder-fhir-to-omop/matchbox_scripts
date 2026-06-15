@@ -237,6 +237,8 @@ def _analyze_report(path):
     counts = {}
     issues = []
     for row in p.rows:
+        if len(row) < 4:        # legend rows have 2 cells; data rows have 4–6
+            continue
         status = next((c for c in row if c in STATUSES), None)
         if not status:
             continue
@@ -258,6 +260,7 @@ def _analyze_report(path):
     else:
         print('\n  No issues — all transforms OK or SUPPRESSED.')
     print()
+    return counts
 
 
 def step_test():

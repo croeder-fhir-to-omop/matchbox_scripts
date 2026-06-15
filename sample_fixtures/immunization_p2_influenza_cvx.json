@@ -12,10 +12,10 @@
     ]
   },
   "patient": {
-    "reference": "Patient/p2"
+    "reference": "Patient/2"
   },
   "encounter": {
-    "reference": "Encounter/e3"
+    "reference": "Encounter/3"
   },
   "occurrenceDateTime": "2025-03-15"
 }

@@ -12,10 +12,10 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p4"
+    "reference": "Patient/4"
   },
   "encounter": {
-    "reference": "Encounter/e6"
+    "reference": "Encounter/6"
   },
   "valueQuantity": {
     "value": 139,

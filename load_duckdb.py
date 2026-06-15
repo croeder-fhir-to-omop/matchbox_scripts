@@ -255,6 +255,10 @@ def write_report(results, csv_rows=None):
   h1 {{ color: #333; }}
   .note {{ background:#fff8e1; border-left:4px solid #c07a00; padding:0.75em 1em; margin:1em 0; font-size:0.95em; }}
   .summary {{ margin: 1em 0; font-size: 1.1em; }}
+  .legend {{ background:#fff; border:1px solid #ddd; border-radius:4px; padding:0.75em 1.25em; margin:1em 0; font-size:0.9em; }}
+  .legend table {{ border-collapse:collapse; background:transparent; width:auto; }}
+  .legend td {{ padding:3px 12px 3px 0; border:none; vertical-align:top; }}
+  .legend .badge {{ font-weight:bold; min-width:6em; display:inline-block; }}
   table {{ border-collapse: collapse; width: 100%; background: #fff; }}
   th {{ background: #333; color: #fff; padding: 8px 12px; text-align: left; }}
   td {{ padding: 6px 12px; border-bottom: 1px solid #ddd; vertical-align:top; }}
@@ -274,6 +278,17 @@ def write_report(results, csv_rows=None):
   either updated StructureMaps or a post-transform vocabulary lookup step.
 </div>
 <div class="summary">{summary}</div>
+<div class="legend">
+  <strong>Status legend</strong>
+  <table>
+    <tr><td><span class="badge" style="color:#2d8a4e">OK</span></td><td>Transform succeeded; row inserted into OMOP table.</td></tr>
+    <tr><td><span class="badge" style="color:#5a7fa8">XFAIL</span></td><td>Expected failure &mdash; transform ran and error was captured, but this fixture is a known-bad negative test. Failures here are intentional.</td></tr>
+    <tr><td><span class="badge" style="color:#c07a00">WARN</span></td><td>Unexpected failure &mdash; transform ran but produced an error or empty result. Needs investigation.</td></tr>
+    <tr><td><span class="badge" style="color:#888">SKIP</span></td><td>Resource structurally incompatible with the current server (e.g. R5 resource sent to R4 matchbox). Transform not attempted.</td></tr>
+    <tr><td><span class="badge" style="color:#888">SUPPRESSED</span></td><td>Resource intentionally excluded by ETL logic (e.g. refuted condition, not-done procedure). No OMOP row expected.</td></tr>
+    <tr><td><span class="badge" style="color:#c0392b">ERROR</span></td><td>Critical DB error &mdash; typically a primary key or NOT NULL constraint violation. Row not inserted.</td></tr>
+  </table>
+</div>
 <table>
 <tr><th>File</th><th>StructureMap</th><th>Table</th><th>Status</th><th>CSV</th><th>Root Cause</th></tr>
 {rows_html}

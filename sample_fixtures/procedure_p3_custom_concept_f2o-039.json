@@ -12,10 +12,10 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p3"
+    "reference": "Patient/3"
   },
   "encounter": {
-    "reference": "Encounter/e4"
+    "reference": "Encounter/4"
   },
   "performedDateTime": "2025-04-20"
 }

@@ -13,10 +13,10 @@
     ]
   },
   "subject": {
-    "reference": "Patient/p4"
+    "reference": "Patient/4"
   },
   "encounter": {
-    "reference": "Encounter/e5"
+    "reference": "Encounter/5"
   },
   "authoredOn": "2025-05-05"
 }

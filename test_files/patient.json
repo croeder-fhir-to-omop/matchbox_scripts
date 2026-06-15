@@ -1,6 +1,6 @@
 {
   "resourceType": "Patient",
-  "id": "example",
+  "id": "1",
   "identifier": [
     {
       "system": "http://hospital.smarthealthit.org",
