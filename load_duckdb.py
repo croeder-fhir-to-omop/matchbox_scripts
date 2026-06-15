@@ -82,22 +82,23 @@ FIXTURE_TRANSFORMS = [
 # runs are not obscured by known-bad test cases. The transform still runs and the
 # actual error message is preserved.
 EXPECTED_FAILURES = {
-    # intentionally missing subject — tests that ETL rejects subjectless resources
-    'condition_p4_missing_subject_NEG_f2o-012.json',
     # local institutional code — no standard OMOP mapping exists
     'condition_p3_local_unmapped.json',
     'procedure_p3_custom_concept_f2o-039.json',
-    # cancelled prescription — not a drug exposure event
-    'medicationrequest_p4_cancelled_NEG_f2o-060.json',
     # no effective date on observation — tests date-required constraint
     'observation_p4_nodate_NEG_f2o-070.json',
-    # identifier leak test — requires real person_id resolution to validate
+    # identifier leak test: fixture now passes with numeric-ID approach; tracked as XPASS
     'condition_p4_identifier_leak_NEG_f2o-020.json',
+    # intentionally missing subject — now SUPPRESSED by pre-check; tracked as XPASS if it passes
+    'condition_p4_missing_subject_NEG_f2o-012.json',
+    # cancelled prescription — now SUPPRESSED by pre-check; tracked as XPASS if it passes
+    'medicationrequest_p4_cancelled_NEG_f2o-060.json',
 }
 
 STATUS_COLOR = {
     'OK':         '#2d8a4e',
     'XFAIL':      '#5a7fa8',
+    'XPASS':      '#a0522d',
     'SUPPRESSED': '#888',
     'WARN':       '#c07a00',
     'SKIP':       '#888',
@@ -283,6 +284,7 @@ def write_report(results, csv_rows=None):
   <table>
     <tr><td><span class="badge" style="color:#2d8a4e">OK</span></td><td>Transform succeeded; row inserted into OMOP table.</td></tr>
     <tr><td><span class="badge" style="color:#5a7fa8">XFAIL</span></td><td>Expected failure &mdash; transform ran and error was captured, but this fixture is a known-bad negative test. Failures here are intentional.</td></tr>
+    <tr><td><span class="badge" style="color:#a0522d">XPASS</span></td><td>Unexpected pass &mdash; fixture is listed as an expected failure but the transform succeeded and produced a row. Needs review.</td></tr>
     <tr><td><span class="badge" style="color:#c07a00">WARN</span></td><td>Unexpected failure &mdash; transform ran but produced an error or empty result. Needs investigation.</td></tr>
     <tr><td><span class="badge" style="color:#888">SKIP</span></td><td>Resource structurally incompatible with the current server (e.g. R5 resource sent to R4 matchbox). Transform not attempted.</td></tr>
     <tr><td><span class="badge" style="color:#888">SUPPRESSED</span></td><td>Resource intentionally excluded by ETL logic (e.g. refuted condition, not-done procedure). No OMOP row expected.</td></tr>
@@ -416,8 +418,13 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
                 row['person_source_value'] = None
             ok, err = insert(con, table, row)
             if ok:
-                print(f'  OK {path.name} -> {table}')
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'OK'})
+                if path.name in EXPECTED_FAILURES:
+                    status = 'XPASS'
+                    print(f'  XPASS {path.name} -> {table} (expected to fail but passed)')
+                else:
+                    status = 'OK'
+                    print(f'  OK {path.name} -> {table}')
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status})
                 csv_rows.setdefault(table, []).append(row)
             else:
                 if path.name in EXPECTED_FAILURES:

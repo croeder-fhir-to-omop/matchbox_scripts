@@ -111,6 +111,8 @@ def transform_encounter(resource):
 
 
 def transform_condition(resource):
+    if not resource.get('subject'):
+        return None
     ver_status = (
         resource.get('verificationStatus', {})
         .get('coding', [{}])[0]
@@ -195,6 +197,8 @@ def transform_medication(resource):
         raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
     resource_type = resource.get('resourceType', '')
     if resource_type == 'MedicationRequest':
+        if resource.get('status') == 'cancelled':
+            return None
         result = _call(resource, 'MedicationRequestMap')
     else:
         result = _call(resource, 'MedicationMap')
