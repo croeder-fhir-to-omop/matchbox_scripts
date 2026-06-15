@@ -17,12 +17,21 @@ import time
 import requests
 
 _BASE_URL = None
+_BASE_URL_R5 = None
+
 
 def _base_url():
     global _BASE_URL
     if _BASE_URL is None:
         _BASE_URL = os.environ.get('MATCHBOX_URL', 'http://matchbox:8080') + '/matchboxv3/fhir'
     return _BASE_URL
+
+
+def _base_url_r5():
+    global _BASE_URL_R5
+    if _BASE_URL_R5 is None:
+        _BASE_URL_R5 = os.environ.get('MATCHBOX_R5_URL', 'http://matchbox-r5:8082') + '/matchboxv3/fhir'
+    return _BASE_URL_R5
 
 _HEADERS = {
     'Content-Type': 'application/fhir+json',
@@ -58,6 +67,21 @@ def _call(resource, map_name):
     time.sleep(1)
     r = requests.post(
         f'{_base_url()}/StructureMap/$transform',
+        params={'source': f'{_IG}/{map_name}'},
+        headers=_HEADERS,
+        json=resource,
+    )
+    r.raise_for_status()
+    result = r.json()
+    if result.get('resourceType') == 'OperationOutcome':
+        return None
+    return result
+
+
+def _call_r5(resource, map_name):
+    time.sleep(1)
+    r = requests.post(
+        f'{_base_url_r5()}/StructureMap/$transform',
         params={'source': f'{_IG}/{map_name}'},
         headers=_HEADERS,
         json=resource,
@@ -216,6 +240,137 @@ def transform_bp_systolic(resource):
 
 def transform_bp_diastolic(resource):
     result = _call(resource, 'BloodPressureDiastolicMap')
+    if result:
+        result['measurement_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+# =============================================================================
+# R5 transform functions — target the R5 matchbox on MATCHBOX_R5_URL.
+# Each calls _call_r5() with the corresponding R5-suffixed map name.
+# =============================================================================
+
+def transform_patient_r5(resource):
+    result = _call_r5(resource, 'PersonMapR5')
+    if result:
+        fhir_id = resource.get('id', '')
+        try:
+            result['person_id'] = int(fhir_id)
+        except (ValueError, TypeError):
+            result['person_id'] = _next_id()
+    return result
+
+
+def transform_encounter_r5(resource):
+    result = _call_r5(resource, 'EncounterVisitMapR5')
+    if result:
+        fhir_id = resource.get('id', '')
+        try:
+            result['visit_occurrence_id'] = int(fhir_id)
+        except (ValueError, TypeError):
+            result['visit_occurrence_id'] = _next_id()
+        _set_person_id(result, resource)
+    return result
+
+
+def transform_condition_r5(resource):
+    result = _call_r5(resource, 'ConditionMapR5')
+    if result:
+        result['condition_occurrence_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_procedure_r5(resource):
+    result = _call_r5(resource, 'ProcedureMapR5')
+    if result:
+        result['procedure_occurrence_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_allergy_r5(resource):
+    result = _call_r5(resource, 'AllergyMapR5')
+    if result:
+        result['observation_id'] = _next_id()
+        _set_person_id(result, resource, ref_key='patient')
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_immunization_r5(resource):
+    result = _call_r5(resource, 'ImmunizationMapR5')
+    if result:
+        result['drug_exposure_id'] = _next_id()
+        _set_person_id(result, resource, ref_key='patient')
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_measurement_r5(resource):
+    result = _call_r5(resource, 'MeasurementMapR5')
+    if result:
+        result['measurement_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_observation_r5(resource):
+    result = _call_r5(resource, 'ObservationMapR5')
+    if result:
+        result['observation_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_vital_signs_r5(resource):
+    result = _call_r5(resource, 'SimpleVitalSignsMapR5')
+    if result:
+        result['measurement_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_medication_r5(resource):
+    resource_type = resource.get('resourceType', '')
+    if resource_type == 'MedicationRequest':
+        result = _call_r5(resource, 'MedicationRequestMapR5')
+    else:
+        result = _call_r5(resource, 'MedicationStatementMapR5')
+    if result:
+        result['drug_exposure_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_bp_panel_r5(resource):
+    result = _call_r5(resource, 'BloodPressureVitalSignsMapR5')
+    if result:
+        result['measurement_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_bp_systolic_r5(resource):
+    result = _call_r5(resource, 'BloodPressureSystolicMapR5')
+    if result:
+        result['measurement_id'] = _next_id()
+        _set_person_id(result, resource)
+        _set_visit_id(result, resource)
+    return result
+
+
+def transform_bp_diastolic_r5(resource):
+    result = _call_r5(resource, 'BloodPressureDiastolicMapR5')
     if result:
         result['measurement_id'] = _next_id()
         _set_person_id(result, resource)

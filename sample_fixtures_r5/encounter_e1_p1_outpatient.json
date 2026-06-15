@@ -1,0 +1,13 @@
+{
+  "resourceType": "Encounter",
+  "id": "1",
+  "status": "completed",
+  "class": {
+    "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB" }]
+  },
+  "subject": { "reference": "Patient/1" },
+  "actualPeriod": {
+    "start": "2020-03-15T09:00:00Z",
+    "end": "2020-03-15T10:00:00Z"
+  }
+}

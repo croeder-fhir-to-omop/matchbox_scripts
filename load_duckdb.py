@@ -30,6 +30,20 @@ from transforms import (
     transform_patient,
     transform_procedure,
     transform_vital_signs,
+    # R5 variants
+    transform_allergy_r5,
+    transform_bp_diastolic_r5,
+    transform_bp_panel_r5,
+    transform_bp_systolic_r5,
+    transform_condition_r5,
+    transform_encounter_r5,
+    transform_immunization_r5,
+    transform_measurement_r5,
+    transform_medication_r5,
+    transform_observation_r5,
+    transform_patient_r5,
+    transform_procedure_r5,
+    transform_vital_signs_r5,
 )
 
 SCRIPTS_DIR = Path(__file__).parent
@@ -76,6 +90,48 @@ FIXTURE_TRANSFORMS = [
     ('medicationrequest*.json',   transform_medication, 'drug_exposure',        'MedicationRequestMap'),
     ('medicationstatement*.json', transform_medication, 'drug_exposure',        'MedicationMap'),
 ]
+
+# R5 variant transforms — mirrors FIXTURE_TRANSFORMS but targets the R5 matchbox
+# and uses R5-suffixed map names. Fixture file naming conventions are the same.
+FIXTURE_TRANSFORMS_R5 = [
+    ('patient*.json',         transform_patient_r5,       'person',               'PersonMapR5'),
+    ('Patient-Pat-*.json',    transform_patient_r5,       'person',               'PersonMapR5'),
+    ('encounter_*.json',      transform_encounter_r5,     'visit_occurrence',     'EncounterVisitMapR5'),
+    ('condition_*.json',      transform_condition_r5,     'condition_occurrence', 'ConditionMapR5'),
+    ('procedure_*.json',      transform_procedure_r5,     'procedure_occurrence', 'ProcedureMapR5'),
+    ('immunization_*.json',   transform_immunization_r5,  'drug_exposure',        'ImmunizationMapR5'),
+    ('observation_*weight*.json',    transform_measurement_r5, 'measurement',     'MeasurementMapR5'),
+    ('observation_*creatinine*.json',transform_measurement_r5, 'measurement',     'MeasurementMapR5'),
+    ('observation_*sodium*.json',    transform_measurement_r5, 'measurement',     'MeasurementMapR5'),
+    ('observation_*NEG*.json',       transform_measurement_r5, 'measurement',     'MeasurementMapR5'),
+    ('observation_*temp*.json',      transform_vital_signs_r5, 'measurement',     'SimpleVitalSignsMapR5'),
+    ('observation_*heartrate*.json', transform_vital_signs_r5, 'measurement',     'SimpleVitalSignsMapR5'),
+    ('observation_bp*.json',         transform_bp_panel_r5,    'measurement',     'BloodPressureVitalSignsMapR5'),
+    ('observation_bp*.json',         transform_bp_systolic_r5, 'measurement',     'BloodPressureSystolicMapR5'),
+    ('observation_bp*.json',         transform_bp_diastolic_r5,'measurement',     'BloodPressureDiastolicMapR5'),
+    ('observation_*blood*.json',     transform_bp_panel_r5,    'measurement',     'BloodPressureVitalSignsMapR5'),
+    ('observation_*blood*.json',     transform_bp_systolic_r5, 'measurement',     'BloodPressureSystolicMapR5'),
+    ('observation_*blood*.json',     transform_bp_diastolic_r5,'measurement',     'BloodPressureDiastolicMapR5'),
+    ('observation_smoking*.json',    transform_observation_r5, 'observation',     'ObservationMapR5'),
+    ('allergy_*.json',        transform_allergy_r5,       'observation',          'AllergyMapR5'),
+    ('medicationrequest*.json',   transform_medication_r5, 'drug_exposure',       'MedicationRequestMapR5'),
+    ('medicationstatement*.json', transform_medication_r5, 'drug_exposure',       'MedicationStatementMapR5'),
+]
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description='Load FHIR fixtures into OMOP DuckDB')
+    parser.add_argument('--fixtures-dir', default=None,
+                        help='Directory containing FHIR fixture JSON files')
+    parser.add_argument('--fhir-version', choices=['r4', 'r5'], default='r4',
+                        help='FHIR version to use for transforms (default: r4)')
+    return parser.parse_args(argv)
+
+
+def select_fixture_transforms(fhir_version: str):
+    """Return the FIXTURE_TRANSFORMS list appropriate for the given FHIR version."""
+    return FIXTURE_TRANSFORMS_R5 if fhir_version == 'r5' else FIXTURE_TRANSFORMS
+
 
 # Fixtures whose failures are expected. When a WARN/ERROR occurs for a file in this
 # set, the status is shown as XFAIL (expected failure) rather than WARN, so green
@@ -348,11 +404,13 @@ def write_csvs(csv_rows):
     print(f'CSV files written to {CSV_DIR}')
 
 
-def run(fixture_dirs=None):
+def run(fixture_dirs=None, fhir_version='r4'):
     if fixture_dirs is None:
         fixture_dirs = [DEFAULT_FIXTURES_DIR]
     elif isinstance(fixture_dirs, Path):
         fixture_dirs = [fixture_dirs]
+
+    fixture_transforms = select_fixture_transforms(fhir_version)
 
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     if os.path.exists(DB_PATH):
@@ -378,7 +436,7 @@ def run(fixture_dirs=None):
 
     for fixture_dir in fixture_dirs:
         print(f'Fixtures dir: {fixture_dir}')
-        _load_fixture_dir(con, fixture_dir, results, csv_rows)
+        _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms)
 
     con.close()
     print(f'Done. Database written to {DB_PATH}')
@@ -386,9 +444,11 @@ def run(fixture_dirs=None):
     write_report(results, csv_rows)
 
 
-def _load_fixture_dir(con, fixture_dir, results, csv_rows):
+def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=None):
+    if fixture_transforms is None:
+        fixture_transforms = FIXTURE_TRANSFORMS
     processed = set()
-    for pattern, transform_fn, table, map_name in FIXTURE_TRANSFORMS:
+    for pattern, transform_fn, table, map_name in fixture_transforms:
         paths = sorted(fixture_dir.glob(pattern))
         for path in paths:
             processed.add(path.name)
@@ -453,8 +513,7 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--fixtures-dir', nargs='+', default=os.environ.get('FIXTURES_DIR', 'test_files').split(),
-                        help='One or more fixture directories (default: test_files; also reads FIXTURES_DIR env var)')
-    args = parser.parse_args()
-    run(fixture_dirs=[SCRIPTS_DIR / d for d in args.fixtures_dir])
+    _args = parse_args()
+    _fixtures_dir = _args.fixtures_dir or os.environ.get('FIXTURES_DIR', 'test_files')
+    _fixture_dirs = [SCRIPTS_DIR / d for d in _fixtures_dir.split()] if isinstance(_fixtures_dir, str) else [SCRIPTS_DIR / _fixtures_dir]
+    run(fixture_dirs=_fixture_dirs, fhir_version=_args.fhir_version)
