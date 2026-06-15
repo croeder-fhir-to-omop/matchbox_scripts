@@ -67,12 +67,34 @@ def step_ig():
     print('IG package copied.')
 
 
+def _fix_null_params(obj):
+    """Replace null entries in StructureMap target parameter arrays with {"valueString": ""}.
+
+    The R4 IG publisher serializes empty-string FML translate() parameters as JSON null,
+    which the HAPI FHIR R4 parser rejects.  Replacing null with {"valueString": ""} restores
+    the intended empty-string semantics and keeps the JSON parseable.
+    """
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == 'parameter' and isinstance(v, list):
+                obj[k] = [{"valueString": ""} if item is None else item for item in v]
+            else:
+                _fix_null_params(v)
+    elif isinstance(obj, list):
+        for item in obj:
+            if isinstance(item, dict):
+                _fix_null_params(item)
+
+
 def _strip_package_deps(tgz_path: Path) -> None:
     """Repack a FHIR package tgz with an empty dependencies map.
 
     HAPI FHIR fetches transitive dependencies from the network when installing
     a package.  For packages we bundle locally, we clear the dependency list so
     HAPI never makes those network calls — the bundles themselves are all we need.
+
+    Also fixes null StructureMap parameters produced by the R4 IG publisher (see
+    _fix_null_params).
     """
     import json, tarfile, io
     print(f'  Stripping dependencies from {tgz_path.name}', flush=True)
@@ -87,6 +109,11 @@ def _strip_package_deps(tgz_path: Path) -> None:
     pkg = json.loads(raw)
     pkg['dependencies'] = {}
     contents[pkg_key] = (member, json.dumps(pkg, indent=2).encode())
+    for name, (member, data) in list(contents.items()):
+        if 'StructureMap-' in name and name.endswith('.json'):
+            sm = json.loads(data)
+            _fix_null_params(sm)
+            contents[name] = (member, json.dumps(sm, separators=(',', ':')).encode())
     with tarfile.open(tgz_path, 'w:gz') as tf:
         for name, (member, data) in contents.items():
             member.size = len(data)
