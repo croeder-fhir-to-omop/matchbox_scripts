@@ -103,6 +103,9 @@ def _is_r5_medication(resource):
 def transform_medication(resource):
     if _is_r5_medication(resource):
         raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
+    resource_type = resource.get('resourceType', '')
+    if resource_type == 'MedicationRequest':
+        return _call(resource, 'MedicationRequestMap')
     return _call(resource, 'MedicationMap')
 
 

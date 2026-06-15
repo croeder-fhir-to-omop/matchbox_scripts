@@ -73,7 +73,8 @@ FIXTURE_TRANSFORMS = [
     ('observation_*blood*.json',            transform_bp_diastolic,'measurement',  'BloodPressureDiastolicMap'),
     ('observation_smoking*.json',           transform_observation, 'observation',  'ObservationMap'),
     ('allergy_*.json',        transform_allergy,    'observation',          'AllergyMap'),
-    ('medication*.json',      transform_medication, 'drug_exposure',        'MedicationMap'),
+    ('medicationrequest*.json',   transform_medication, 'drug_exposure',        'MedicationRequestMap'),
+    ('medicationstatement*.json', transform_medication, 'drug_exposure',        'MedicationMap'),
 ]
 
 STATUS_COLOR = {
@@ -158,9 +159,9 @@ def _codings_html(codings):
         return ''
     parts = []
     for c in codings:
-        sys_short = c['system'].rsplit('/', 1)[-1] if c['system'] else '?'
+        sys_uri = c['system'] if c['system'] else '?'
         display = f' &mdash; {c["display"]}' if c.get('display') else ''
-        parts.append(f'<code>{sys_short}|{c["code"]}</code>{display}')
+        parts.append(f'<code>{sys_uri}|{c["code"]}</code>{display}')
     return ('<br><span style="color:#555">Source codes: '
             + ' &nbsp; '.join(parts) + '</span>')
 

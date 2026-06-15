@@ -151,8 +151,27 @@ def step_etl():
         print(f'\n>>> docker cp {DQD_CONTAINER}:{tmp_report} {local_report}')
         subprocess.run(['docker', 'cp', f'{DQD_CONTAINER}:{tmp_report}', str(local_report)], check=True)
 
+        # Also publish each report to /omop so it's visible at localhost:8088.
+        omop_dest = '/omop/' + local_report.name
+        run(['docker', 'exec', DQD_CONTAINER, 'cp', tmp_report, omop_dest])
+
         print(f'\n--- Report: {local_report.name} ---')
         _analyze_report(local_report)
+
+    # Write an index page at localhost:8088 linking to both reports.
+    index_path = SCRIPTS_DIR / 'etl_index.html'
+    index_path.write_text(
+        '<!DOCTYPE html>\n'
+        '<html><head><title>ETL Reports</title>\n'
+        '<style>body{font-family:sans-serif;max-width:600px;margin:2rem auto;}'
+        'a{display:block;margin:.5rem 0;}</style>\n'
+        '</head><body>\n'
+        '<h2>FHIR→OMOP ETL Reports</h2>\n'
+        '<a href="etl_report.html">etl_report.html — test_files fixtures</a>\n'
+        '<a href="etl_report_samples.html">etl_report_samples.html — sample_fixtures</a>\n'
+        '</body></html>\n'
+    )
+    subprocess.run(['docker', 'cp', str(index_path), f'{DQD_CONTAINER}:/omop/index.html'], check=True)
 
     if platform.system() == 'Darwin':
         subprocess.run(['open', str(ETL_REPORT)])

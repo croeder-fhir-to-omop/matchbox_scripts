@@ -20,6 +20,8 @@ concept_id	concept_code	vocabulary_id	standard_concept
 437580	18099001	SNOMED	S
 4310996	422504002	SNOMED	S
 4195970	312824007	SNOMED	S
+2072282478	active	ConditionClinical	
+2987938829	inactive	ConditionClinical	
 2956604807	resolved	ConditionClinical	
 2686409417	hosp-trans	AdmitSource	
 2524045274	emd	AdmitSource	
@@ -60,6 +62,8 @@ concept_id	concept_code	vocabulary_id	standard_concept
 2201769126	record	ImmunizationOrigin	
 2517259619	school	ImmunizationOrigin	
 2428807643	provider	ImmunizationOrigin	
+2191227612	140	CVX	
+2977874968	141	CVX	
 2797407239	171	CVX	
 2841924086	food	IntoleranceCategory	
 2558327156	medication	IntoleranceCategory	
