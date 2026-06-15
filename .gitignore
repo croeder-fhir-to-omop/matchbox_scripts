@@ -4,3 +4,5 @@
 *.save
 *.chatgpt
 *.wtf
+__pycache__/
+*.pyc
