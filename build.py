@@ -3,18 +3,21 @@
 Build pipeline: IG → matchbox JAR → Docker images → restart → tests → release.
 
 Usage:
-  python3 build.py                         # full pipeline (ig docker enchilada restart test)
-  python3 build.py mvn                     # rebuild matchbox JAR only (skips tests)
-  python3 build.py ig                      # rebuild IG only
-  python3 build.py docker                  # rebuild matchbox Docker image only
-  python3 build.py enchilada               # rebuild enchilada Docker image only
-  python3 build.py restart                 # restart dqd_docker (wipes matchbox-db)
-  python3 build.py etl                     # re-run ETL in container; analyze etl_report.html
-  python3 build.py test                    # run matchbox_scripts integration tests
-  python3 build.py release                 # build and push both images to Docker Hub
-  python3 build.py mvn ig release          # full release with Java + IG rebuild
+  python3 build.py                            # full pipeline (ig docker enchilada restart test)
+  python3 build.py mvn                        # rebuild matchbox JAR only (skips tests)
+  python3 build.py ig                         # rebuild IG only
+  python3 build.py docker                     # rebuild matchbox Docker image only
+  python3 build.py enchilada                  # rebuild enchilada Docker image only
+  python3 build.py restart                    # restart dqd_docker (wipes matchbox-db)
+  python3 build.py etl                        # re-run ETL in container; analyze etl_report.html
+  python3 build.py test                       # run matchbox_scripts integration tests
+  python3 build.py release                    # build and push both images to Docker Hub
+  python3 build.py mvn ig release             # full release with Java + IG rebuild
+  python3 build.py --version r5 etl           # run ETL with R5 fixtures
+  python3 build.py --version r5 docker restart etl  # R5 stack
 """
 
+import argparse
 import platform
 import subprocess
 import sys
@@ -38,6 +41,26 @@ ETL_REPORT    = SCRIPTS_DIR / 'etl_report.html'
 
 STEPS = ['mvn', 'ig', 'docker', 'enchilada', 'restart', 'stop', 'etl', 'test', 'release']
 DEFAULT_STEPS = ['ig', 'docker', 'enchilada', 'restart', 'test']
+
+# Version-controlled globals — overridden by --version flag in main()
+_FHIR_VERSION = 'r4'
+
+
+def fixture_dirs(version: str) -> tuple[str, str]:
+    """Return (test_fixtures_dir, sample_fixtures_dir) for the given FHIR version."""
+    return {
+        'r4': ('test_files', 'sample_fixtures'),
+        'r5': ('test_files_r5', 'sample_fixtures_r5'),
+    }[version]
+
+
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='FHIR→OMOP build pipeline')
+    parser.add_argument('--version', choices=['r4', 'r5'], default='r4',
+                        help='FHIR version to target (default: r4)')
+    parser.add_argument('steps', nargs='*',
+                        help=f'Build steps to run (default: {DEFAULT_STEPS})')
+    return parser.parse_args(argv)
 
 
 def run(cmd, cwd=None, check=True):
@@ -163,10 +186,11 @@ ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_samples.html'
 
 def step_etl():
     print('\n=== Re-running ETL in dqd container ===')
+    test_dir, sample_dir = fixture_dirs(_FHIR_VERSION)
     # REPORT_PATH = dirname(DB_PATH)/etl_report.html, so use subdirs to get separate reports.
     runs = [
-        ('test_files',      '/tmp/etl_test/omop.ddb',    '/tmp/etl_test_csv',    '/tmp/etl_test/etl_report.html',    ETL_REPORT),
-        ('sample_fixtures', '/tmp/etl_samples/omop.ddb', '/tmp/etl_samples_csv', '/tmp/etl_samples/etl_report.html', ETL_REPORT_SAMPLES),
+        (test_dir,   '/tmp/etl_test/omop.ddb',    '/tmp/etl_test_csv',    '/tmp/etl_test/etl_report.html',    ETL_REPORT),
+        (sample_dir, '/tmp/etl_samples/omop.ddb', '/tmp/etl_samples_csv', '/tmp/etl_samples/etl_report.html', ETL_REPORT_SAMPLES),
     ]
     for fixtures_dir, tmp_db, tmp_csv, tmp_report, local_report in runs:
         print(f'\n--- {fixtures_dir} ---')
@@ -345,6 +369,9 @@ def _enchilada_image_stale():
 
 def _dqd_image_stale():
     """True if ETL sources are newer than the local dqd image."""
+    test_dir, sample_dir = fixture_dirs(_FHIR_VERSION)
+    test_path   = SCRIPTS_DIR / test_dir
+    sample_path = SCRIPTS_DIR / sample_dir
     sources = (
         [
             SCRIPTS_DIR / 'transforms.py',
@@ -353,8 +380,8 @@ def _dqd_image_stale():
             SCRIPTS_DIR / 'ddl',
             DQD_DIR,
         ]
-        + list((SCRIPTS_DIR / 'test_files').glob('*.json'))
-        + list((SCRIPTS_DIR / 'sample_fixtures').glob('*.json'))
+        + (list(test_path.glob('*.json'))   if test_path.exists()   else [])
+        + (list(sample_path.glob('*.json')) if sample_path.exists() else [])
     )
     return _max_mtime(sources) > _image_mtime('croeder/dqd:latest')
 
@@ -388,12 +415,17 @@ def _run_prereqs(step):
 
 
 def main():
-    args = sys.argv[1:] or DEFAULT_STEPS
-    unknown = [a for a in args if a not in STEP_FNS]
+    global _FHIR_VERSION
+    parsed = parse_args()
+    _FHIR_VERSION = parsed.version
+    steps = parsed.steps or DEFAULT_STEPS
+    unknown = [s for s in steps if s not in STEP_FNS]
     if unknown:
         print(f'Unknown steps: {unknown}. Valid: {STEPS}')
         sys.exit(1)
-    for step in args:
+    if _FHIR_VERSION != 'r4':
+        print(f'\n=== FHIR version: {_FHIR_VERSION.upper()} ===')
+    for step in steps:
         _run_prereqs(step)
         STEP_FNS[step]()
     print('\n=== Done ===')
