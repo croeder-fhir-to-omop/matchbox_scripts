@@ -1,0 +1,15 @@
+{
+  "resourceType": "Patient",
+  "id": "11",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-009",
+        "display": "Primary: Pat-009 (gender=unknown; gender_concept_id=0)."
+      }
+    ]
+  },
+  "gender": "unknown",
+  "birthDate": "1965-08-19"
+}

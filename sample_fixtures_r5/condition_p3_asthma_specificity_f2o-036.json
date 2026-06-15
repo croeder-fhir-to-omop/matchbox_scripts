@@ -1,0 +1,43 @@
+{
+  "resourceType": "Condition",
+  "id": "c6",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "195967001",
+        "display": "Asthma"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "389145006",
+        "display": "Allergic asthma"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/3"
+  },
+  "encounter": {
+    "reference": "Encounter/4"
+  },
+  "onsetDateTime": "2025-04-20"
+}

@@ -1,0 +1,14 @@
+{
+  "resourceType": "Patient",
+  "id": "4",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-001",
+        "display": "Primary: Pat-001 (birthDate date precision; birth_datetime NULL)."
+      }
+    ]
+  },
+  "birthDate": "1974-03-15"
+}

@@ -1,0 +1,21 @@
+{
+  "resourceType": "Procedure",
+  "id": "pr2",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://institution.local/lab-codes",
+        "code": "INST-PROC-558",
+        "display": "Institution-specific procedure 558"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/3"
+  },
+  "encounter": {
+    "reference": "Encounter/4"
+  },
+  "occurrenceDateTime": "2025-04-20"
+}

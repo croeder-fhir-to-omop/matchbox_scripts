@@ -1,0 +1,38 @@
+{
+  "resourceType": "Condition",
+  "id": "c2",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/sid/icd-10-cm",
+        "code": "E11.9",
+        "display": "Type 2 diabetes mellitus without complications"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/1"
+  },
+  "encounter": {
+    "reference": "Encounter/1"
+  },
+  "onsetDateTime": "2025-02-10"
+}

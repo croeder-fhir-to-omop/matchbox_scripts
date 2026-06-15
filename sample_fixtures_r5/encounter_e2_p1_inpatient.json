@@ -1,12 +1,12 @@
 {
   "resourceType": "Encounter",
-  "id": "1",
+  "id": "2",
   "status": "finished",
   "class": {
     "coding": [
       {
         "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-        "code": "AMB"
+        "code": "IMP"
       }
     ]
   },
@@ -14,7 +14,7 @@
     "reference": "Patient/1"
   },
   "actualPeriod": {
-    "start": "2025-02-10T09:00:00-05:00",
-    "end": "2025-02-10T09:40:00-05:00"
+    "start": "2025-06-01T07:30:00-05:00",
+    "end": "2025-06-04T11:00:00-05:00"
   }
 }

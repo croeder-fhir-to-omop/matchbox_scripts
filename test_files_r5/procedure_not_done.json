@@ -1,0 +1,39 @@
+{
+  "resourceType": "Procedure",
+  "id": "example-procedure-not-done",
+  "status": "not-done",
+  "statusReason": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "182992009",
+        "display": "Treatment not indicated"
+      }
+    ]
+  },
+  "category": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "387713003",
+        "display": "Surgical procedure"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "80146002",
+        "display": "Appendectomy"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/1"
+  },
+  "encounter": {
+    "reference": "Encounter/1"
+  },
+  "occurrenceDateTime": "2020-03-15"
+}

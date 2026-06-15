@@ -1,0 +1,16 @@
+{
+  "resourceType": "Patient",
+  "id": "6",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://vulcan.hl7.org/f2o/fixture-test-id",
+        "code": "Pat-003",
+        "display": "Primary: Pat-003 (deceasedBoolean=true; no row in death table)."
+      }
+    ]
+  },
+  "gender": "male",
+  "birthDate": "1950-01-01",
+  "deceasedBoolean": true
+}

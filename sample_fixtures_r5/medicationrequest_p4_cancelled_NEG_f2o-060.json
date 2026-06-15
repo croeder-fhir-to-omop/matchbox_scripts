@@ -1,15 +1,15 @@
 {
   "resourceType": "MedicationRequest",
-  "id": "mr1",
-  "status": "active",
+  "id": "mrneg1",
+  "status": "cancelled",
   "intent": "order",
   "subject": {
-    "reference": "Patient/1"
+    "reference": "Patient/4"
   },
   "encounter": {
-    "reference": "Encounter/1"
+    "reference": "Encounter/5"
   },
-  "authoredOn": "2025-02-10",
+  "authoredOn": "2025-05-05",
   "medication": {
     "concept": {
       "coding": [

@@ -1,0 +1,21 @@
+{
+  "resourceType": "Procedure",
+  "id": "prneg1",
+  "status": "not-done",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "80146002",
+        "display": "Appendectomy"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/4"
+  },
+  "encounter": {
+    "reference": "Encounter/5"
+  },
+  "occurrenceDateTime": "2025-05-05"
+}

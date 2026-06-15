@@ -1,15 +1,14 @@
 {
-  "resourceType": "MedicationRequest",
-  "id": "mr1",
+  "resourceType": "MedicationStatement",
+  "id": "ms1",
   "status": "active",
-  "intent": "order",
   "subject": {
-    "reference": "Patient/1"
+    "reference": "Patient/2"
   },
-  "encounter": {
-    "reference": "Encounter/1"
+  "informationSource": {
+    "reference": "Patient/2"
   },
-  "authoredOn": "2025-02-10",
+  "effectiveDateTime": "2025-03-15",
   "medication": {
     "concept": {
       "coding": [
@@ -20,5 +19,8 @@
         }
       ]
     }
+  },
+  "encounter": {
+    "reference": "Encounter/3"
   }
 }
