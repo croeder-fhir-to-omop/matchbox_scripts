@@ -87,12 +87,17 @@ EXPECTED_FAILURES = {
     'procedure_p3_custom_concept_f2o-039.json',
     # no effective date on observation — tests date-required constraint
     'observation_p4_nodate_NEG_f2o-070.json',
-    # identifier leak test: fixture now passes with numeric-ID approach; tracked as XPASS
+    # identifier leak test: passes with numeric-ID approach — tracked as XPASS
     'condition_p4_identifier_leak_NEG_f2o-020.json',
-    # intentionally missing subject — now SUPPRESSED by pre-check; tracked as XPASS if it passes
+    # intentionally missing subject
     'condition_p4_missing_subject_NEG_f2o-012.json',
-    # cancelled prescription — now SUPPRESSED by pre-check; tracked as XPASS if it passes
+    # cancelled prescription
     'medicationrequest_p4_cancelled_NEG_f2o-060.json',
+    # not-done procedure (sample_fixtures and test_files)
+    'procedure_p4_notdone_NEG_f2o-060.json',
+    'procedure_not_done.json',
+    # refuted condition
+    'condition_refuted.json',
 }
 
 STATUS_COLOR = {
@@ -287,7 +292,7 @@ def write_report(results, csv_rows=None):
     <tr><td><span class="badge" style="color:#a0522d">XPASS</span></td><td>Unexpected pass &mdash; fixture is listed as an expected failure but the transform succeeded and produced a row. Needs review.</td></tr>
     <tr><td><span class="badge" style="color:#c07a00">WARN</span></td><td>Unexpected failure &mdash; transform ran but produced an error or empty result. Needs investigation.</td></tr>
     <tr><td><span class="badge" style="color:#888">SKIP</span></td><td>Resource structurally incompatible with the current server (e.g. R5 resource sent to R4 matchbox). Transform not attempted.</td></tr>
-    <tr><td><span class="badge" style="color:#888">SUPPRESSED</span></td><td>Resource intentionally excluded by ETL logic (e.g. refuted condition, not-done procedure). No OMOP row expected.</td></tr>
+    <tr><td><span class="badge" style="color:#888">SUPPRESSED</span></td><td>Transform returned no output (matchbox OperationOutcome or unrecognised resource type). No OMOP row produced.</td></tr>
     <tr><td><span class="badge" style="color:#c0392b">ERROR</span></td><td>Critical DB error &mdash; typically a primary key or NOT NULL constraint violation. Row not inserted.</td></tr>
   </table>
 </div>

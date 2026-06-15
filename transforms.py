@@ -111,15 +111,6 @@ def transform_encounter(resource):
 
 
 def transform_condition(resource):
-    if not resource.get('subject'):
-        return None
-    ver_status = (
-        resource.get('verificationStatus', {})
-        .get('coding', [{}])[0]
-        .get('code')
-    )
-    if ver_status == 'refuted':
-        return None
     result = _call(resource, 'ConditionMap')
     if result:
         result['condition_occurrence_id'] = _next_id()
@@ -129,8 +120,6 @@ def transform_condition(resource):
 
 
 def transform_procedure(resource):
-    if resource.get('status') == 'not-done':
-        return None
     result = _call(resource, 'ProcedureMap')
     if result:
         result['procedure_occurrence_id'] = _next_id()
@@ -197,8 +186,6 @@ def transform_medication(resource):
         raise SkipResource('R5 MedicationStatement (medication.concept) not supported by R4 server')
     resource_type = resource.get('resourceType', '')
     if resource_type == 'MedicationRequest':
-        if resource.get('status') == 'cancelled':
-            return None
         result = _call(resource, 'MedicationRequestMap')
     else:
         result = _call(resource, 'MedicationMap')
