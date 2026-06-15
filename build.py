@@ -151,6 +151,7 @@ def step_restart():
         'bash', '-c',
         'until curl -sf http://localhost:8080/matchboxv3/actuator/health | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
     ])
+    step_etl()
 
 
 def step_stop():
