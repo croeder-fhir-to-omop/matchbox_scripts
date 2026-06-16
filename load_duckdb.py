@@ -334,13 +334,20 @@ def write_report(results, csv_rows=None, title=None):
 <h1>{title}</h1>
 <p>Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
 <div class="note">
-  <strong>Known limitation — OMOP IG StructureMaps v{IG_VERSION}:</strong>
-  The StructureMaps translate FHIR field <em>structure</em> to OMOP field names
-  but do not implement concept_id translation. FHIR gender, LOINC, SNOMED, and
-  RxNorm codes are not resolved to OMOP integer concept_ids by the maps.
-  Echidna (<code>txServer</code>) is configured in matchbox but the maps do not
-  call <code>translate()</code> for concept lookup. Full concept mapping requires
-  either updated StructureMaps or a post-transform vocabulary lookup step.
+  <strong>OMOP IG StructureMaps v{IG_VERSION} — concept mapping status:</strong>
+  The StructureMaps call <code>translate()</code> with named IG ConceptMap URLs for
+  clinical and administrative codes. <strong>enchilada</strong> (local FHIR R4 terminology
+  server) resolves SNOMED, ICD-10-CM, LOINC, and RxNorm codes to OMOP concept_ids via
+  the Athena vocabulary. IG ConceptMaps in matchbox handle administrative codes including
+  gender, condition clinical status, allergy categories, immunization vaccine and route,
+  vital signs and blood pressure LOINC codes.
+  Remaining gaps: <code>unit_concept_id</code> (UCUM — no ConceptMap defined) and
+  <code>drug_concept_id</code> for medication requests/statements.
+</div>
+<div class="note">
+  <strong>CSV column note:</strong>
+  The CSV file linked on each row contains <em>all rows</em> for that OMOP domain table
+  across the entire fixture run — not just the row produced by the fixture on that line.
 </div>
 <div class="summary">{summary}</div>
 <div class="legend">
