@@ -233,21 +233,21 @@ class TestPersonMapLocal:
     """PersonMap with GenderClass ConceptMap URL — local concept lookup."""
 
     def test_WHEN_patient_gender_is_male_SHOULD_produce_gender_concept_id_8507(self):
-        result = transform(PATIENT_MALE, 'PersonMap')
+        result = transform(PATIENT_MALE, 'PersonMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('gender_concept_id') == '8507', (
             f"Expected gender_concept_id=8507, got {result.get('gender_concept_id')}"
         )
 
     def test_WHEN_patient_gender_is_female_SHOULD_produce_gender_concept_id_8532(self):
-        result = transform(PATIENT_FEMALE, 'PersonMap')
+        result = transform(PATIENT_FEMALE, 'PersonMapR4')
         assert result is not None
         assert result.get('gender_concept_id') == '8532', (
             f"Expected gender_concept_id=8532, got {result.get('gender_concept_id')}"
         )
 
     def test_WHEN_patient_has_no_gender_SHOULD_produce_gender_concept_id_0(self):
-        result = transform(PATIENT_NO_GENDER, 'PersonMap')
+        result = transform(PATIENT_NO_GENDER, 'PersonMapR4')
         assert result is not None
         assert result.get('gender_concept_id') == '0', (
             f"Expected gender_concept_id=0, got {result.get('gender_concept_id')}"
@@ -275,35 +275,35 @@ class TestEncounterVisitMapLocal:
     """EncounterVisitMap with EncounterClass ConceptMap URL — local concept lookup."""
 
     def test_WHEN_encounter_class_is_AMB_SHOULD_produce_visit_concept_id_9202(self):
-        result = transform(ENCOUNTER_AMB, 'EncounterVisitMap')
+        result = transform(ENCOUNTER_AMB, 'EncounterVisitMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('visit_concept_id') == '9202', (
             f"Expected visit_concept_id=9202, got {result.get('visit_concept_id')}"
         )
 
     def test_WHEN_encounter_class_is_IMP_SHOULD_produce_visit_concept_id_9201(self):
-        result = transform(ENCOUNTER_IMP, 'EncounterVisitMap')
+        result = transform(ENCOUNTER_IMP, 'EncounterVisitMapR4')
         assert result is not None
         assert result.get('visit_concept_id') == '9201', (
             f"Expected visit_concept_id=9201, got {result.get('visit_concept_id')}"
         )
 
     def test_WHEN_encounter_has_period_SHOULD_produce_visit_start_date(self):
-        result = transform(ENCOUNTER_WITH_PERIOD, 'EncounterVisitMap')
+        result = transform(ENCOUNTER_WITH_PERIOD, 'EncounterVisitMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('visit_start_date') is not None, (
             f"Expected visit_start_date, got None — FML may still use R5 'actualPeriod'"
         )
 
     def test_WHEN_encounter_has_hospitalization_SHOULD_produce_discharged_to_source_value(self):
-        result = transform(ENCOUNTER_WITH_PERIOD, 'EncounterVisitMap')
+        result = transform(ENCOUNTER_WITH_PERIOD, 'EncounterVisitMapR4')
         assert result is not None
         assert result.get('discharged_to_source_value') is not None, (
             f"Expected discharged_to_source_value, got None — FML may still use R5 'admission'"
         )
 
     def test_WHEN_encounter_is_transformed_SHOULD_produce_visit_type_concept_id(self):
-        result = transform(ENCOUNTER_AMB, 'EncounterVisitMap')
+        result = transform(ENCOUNTER_AMB, 'EncounterVisitMapR4')
         assert result is not None
         assert result.get('visit_type_concept_id') is not None, (
             f"Expected visit_type_concept_id (NOT NULL in OMOP), got None"
@@ -315,7 +315,7 @@ class TestMeasurementMap:
     """MeasurementMap — verify fieldToReturn='code' fix doesn't raise FHIRException."""
 
     def test_WHEN_observation_has_laboratory_category_SHOULD_not_error(self):
-        result = transform(OBSERVATION_LABORATORY, 'MeasurementMap')
+        result = transform(OBSERVATION_LABORATORY, 'MeasurementMapR4')
         # result may be None if LOINC→OMOP lookup fails, but must not raise or return OperationOutcome with error
         # (OperationOutcome with the old bug contained "Cannot handle type Coding as string" or similar)
         if result is None:
@@ -325,7 +325,7 @@ class TestMeasurementMap:
         )
 
     def test_WHEN_observation_has_laboratory_category_SHOULD_have_measurement_id(self):
-        result = transform(OBSERVATION_LABORATORY, 'MeasurementMap')
+        result = transform(OBSERVATION_LABORATORY, 'MeasurementMapR4')
         if result is None:
             pytest.skip('MeasurementMap returned OperationOutcome')
         assert result.get('measurement_id') is not None
@@ -340,28 +340,28 @@ class TestPersonMapRaceEthnicity:
     """
 
     def test_WHEN_patient_has_no_race_SHOULD_produce_race_concept_id_0(self):
-        result = transform(PATIENT_MALE, 'PersonMap')
+        result = transform(PATIENT_MALE, 'PersonMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('race_concept_id') == '0', (
             f"Expected race_concept_id='0', got {result.get('race_concept_id')!r}"
         )
 
     def test_WHEN_patient_has_no_ethnicity_SHOULD_produce_ethnicity_concept_id_0(self):
-        result = transform(PATIENT_MALE, 'PersonMap')
+        result = transform(PATIENT_MALE, 'PersonMapR4')
         assert result is not None
         assert result.get('ethnicity_concept_id') == '0', (
             f"Expected ethnicity_concept_id='0', got {result.get('ethnicity_concept_id')!r}"
         )
 
     def test_WHEN_patient_has_white_race_SHOULD_produce_race_concept_id_8527(self):
-        result = transform(PATIENT_WHITE, 'PersonMap')
+        result = transform(PATIENT_WHITE, 'PersonMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('race_concept_id') == '8527', (
             f"Expected race_concept_id='8527' (White), got {result.get('race_concept_id')!r}"
         )
 
     def test_WHEN_patient_has_hispanic_ethnicity_SHOULD_produce_ethnicity_concept_id_38003563(self):
-        result = transform(PATIENT_HISPANIC, 'PersonMap')
+        result = transform(PATIENT_HISPANIC, 'PersonMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('ethnicity_concept_id') == '38003563', (
             f"Expected ethnicity_concept_id='38003563' (Hispanic), got {result.get('ethnicity_concept_id')!r}"
@@ -376,14 +376,14 @@ class TestProcedureMap:
     """
 
     def test_WHEN_procedure_has_performedDateTime_SHOULD_produce_procedure_date(self):
-        result = transform(PROCEDURE_DATETIME, 'ProcedureMap')
+        result = transform(PROCEDURE_DATETIME, 'ProcedureMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('procedure_date') is not None, (
             f"Expected non-null procedure_date, got None — ProcedureMap may still use R5 'occurrence' field"
         )
 
     def test_WHEN_procedure_has_performedPeriod_SHOULD_produce_procedure_date(self):
-        result = transform(PROCEDURE_PERIOD, 'ProcedureMap')
+        result = transform(PROCEDURE_PERIOD, 'ProcedureMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         assert result.get('procedure_date') is not None, (
             f"Expected non-null procedure_date from performedPeriod, got None"
@@ -398,13 +398,13 @@ class TestObservationMap:
     """
 
     def test_WHEN_observation_has_valueCodeableConcept_SHOULD_not_error(self):
-        result = transform(OBSERVATION_SMOKING, 'ObservationMap')
+        result = transform(OBSERVATION_SMOKING, 'ObservationMapR4')
         assert result is not None, (
             'ObservationMap returned OperationOutcome — likely 500 from undefined variable b'
         )
 
     def test_WHEN_observation_has_valueCodeableConcept_SHOULD_have_observation_id(self):
-        result = transform(OBSERVATION_SMOKING, 'ObservationMap')
+        result = transform(OBSERVATION_SMOKING, 'ObservationMapR4')
         assert result is not None
         assert result.get('observation_id') is not None, (
             f"Expected observation_id to be set, got None"
@@ -419,7 +419,7 @@ class TestMeasurementMapUnit:
     """
 
     def test_WHEN_observation_has_unit_SHOULD_not_put_string_in_unit_concept_id(self):
-        result = transform(OBSERVATION_WITH_UNIT, 'MeasurementMap')
+        result = transform(OBSERVATION_WITH_UNIT, 'MeasurementMapR4')
         assert result is not None, 'transform returned OperationOutcome'
         uid = result.get('unit_concept_id')
         assert uid is None or str(uid).isdigit(), (
@@ -428,7 +428,7 @@ class TestMeasurementMapUnit:
         )
 
     def test_WHEN_observation_has_unit_kg_SHOULD_produce_unit_source_value_kg(self):
-        result = transform(OBSERVATION_WITH_UNIT, 'MeasurementMap')
+        result = transform(OBSERVATION_WITH_UNIT, 'MeasurementMapR4')
         assert result is not None
         assert result.get('unit_source_value') == 'kg', (
             f"Expected unit_source_value='kg', got {result.get('unit_source_value')!r}"
@@ -466,7 +466,7 @@ class TestSimpleVitalSignsMapUnit:
     """
 
     def test_WHEN_vital_sign_has_unit_Cel_SHOULD_not_put_string_in_unit_concept_id(self):
-        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMapR4')
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         uid = result.get('unit_concept_id')
         assert uid is None or str(uid).isdigit(), (
@@ -475,14 +475,14 @@ class TestSimpleVitalSignsMapUnit:
         )
 
     def test_WHEN_vital_sign_has_unit_Cel_SHOULD_produce_unit_source_value_Cel(self):
-        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMapR4')
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         assert result.get('unit_source_value') == 'Cel', (
             f"Expected unit_source_value='Cel', got {result.get('unit_source_value')!r}"
         )
 
     def test_WHEN_vital_sign_has_unit_kg_SHOULD_produce_unit_source_value_kg(self):
-        result = transform(VITAL_SIGN_WEIGHT, 'SimpleVitalSignsMap')
+        result = transform(VITAL_SIGN_WEIGHT, 'SimpleVitalSignsMapR4')
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         assert result.get('unit_source_value') == 'kg', (
             f"Expected unit_source_value='kg', got {result.get('unit_source_value')!r}"
@@ -508,14 +508,14 @@ class TestProcedureMapTypeConceptId:
     """
 
     def test_WHEN_procedure_is_transformed_SHOULD_produce_procedure_type_concept_id(self):
-        result = transform(PROCEDURE_WITH_DATETIME, 'ProcedureMap')
+        result = transform(PROCEDURE_WITH_DATETIME, 'ProcedureMapR4')
         assert result is not None, 'ProcedureMap returned OperationOutcome'
         assert result.get('procedure_type_concept_id') is not None, (
             "Expected procedure_type_concept_id to be set (NOT NULL in OMOP CDM 5.4), got None"
         )
 
     def test_WHEN_procedure_is_transformed_SHOULD_produce_procedure_type_concept_id_32817(self):
-        result = transform(PROCEDURE_WITH_DATETIME, 'ProcedureMap')
+        result = transform(PROCEDURE_WITH_DATETIME, 'ProcedureMapR4')
         assert result is not None
         assert result.get('procedure_type_concept_id') == '32817', (
             f"Expected procedure_type_concept_id=32817 (EHR), got {result.get('procedure_type_concept_id')!r}"
@@ -531,7 +531,7 @@ class TestSimpleVitalSignsMeasurementId:
     """
 
     def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_id(self):
-        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMapR4')
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         assert result.get('measurement_id') is not None, (
             "Expected measurement_id to be set (NOT NULL in OMOP CDM 5.4), got None"
@@ -551,7 +551,7 @@ class TestSimpleVitalSignsConceptId:
 
     def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_concept_id(self):
         result = _retrying(
-            lambda: transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap'),
+            lambda: transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMapR4'),
             passes=lambda r: r is not None and r.get('measurement_concept_id') is not None,
             attempts=3, delay=10,
         )
@@ -562,7 +562,7 @@ class TestSimpleVitalSignsConceptId:
 
     def test_WHEN_vital_sign_is_transformed_measurement_concept_id_SHOULD_be_numeric(self):
         result = _retrying(
-            lambda: transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap'),
+            lambda: transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMapR4'),
             passes=lambda r: r is not None and r.get('measurement_concept_id') is not None,
             attempts=3, delay=10,
         )
@@ -573,7 +573,7 @@ class TestSimpleVitalSignsConceptId:
         )
 
     def test_WHEN_vital_sign_is_transformed_SHOULD_produce_measurement_type_concept_id_32817(self):
-        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMap')
+        result = transform(VITAL_SIGN_TEMPERATURE, 'SimpleVitalSignsMapR4')
         assert result is not None, 'SimpleVitalSignsMap returned OperationOutcome'
         assert str(result.get('measurement_type_concept_id')) == '32817', (
             f"measurement_type_concept_id must be 32817 (EHR), got {result.get('measurement_type_concept_id')!r}"
@@ -611,7 +611,7 @@ class TestBloodPressureVitalSignsMap:
     """
 
     def test_WHEN_bp_panel_is_transformed_SHOULD_return_measurement(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMapR4')
         assert result is not None, 'BloodPressureVitalSignsMap returned OperationOutcome'
         assert result.get('resourceType') in ('MeasureTable', 'Measurement'), (
             f"Expected MeasureTable/Measurement, got {result.get('resourceType')}"
@@ -619,7 +619,7 @@ class TestBloodPressureVitalSignsMap:
 
     def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_concept_id(self):
         result = _retrying(
-            lambda: transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap'),
+            lambda: transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMapR4'),
             passes=lambda r: r is not None and r.get('measurement_concept_id') is not None,
             attempts=3, delay=10,
         )
@@ -629,14 +629,14 @@ class TestBloodPressureVitalSignsMap:
         assert str(cid).lstrip('-').isdigit(), f'measurement_concept_id must be integer, got {cid!r}'
 
     def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_type_concept_id_32817(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMapR4')
         assert result is not None
         assert str(result.get('measurement_type_concept_id')) == '32817', (
             f"measurement_type_concept_id must be 32817, got {result.get('measurement_type_concept_id')!r}"
         )
 
     def test_WHEN_bp_panel_is_transformed_SHOULD_have_measurement_id(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureVitalSignsMapR4')
         assert result is not None
         mid = result.get('measurement_id')
         assert mid is not None, 'measurement_id must not be None (required for OMOP PK)'
@@ -650,14 +650,14 @@ class TestBloodPressureSystolicMap:
     """
 
     def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_return_measurement(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None, 'BloodPressureSystolicMap returned OperationOutcome'
         assert result.get('resourceType') in ('MeasureTable', 'Measurement'), (
             f"Expected MeasureTable/Measurement, got {result.get('resourceType')}"
         )
 
     def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_concept_id_3004249(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None
         cid = result.get('measurement_concept_id')
         assert str(cid) == '3004249', (
@@ -665,27 +665,27 @@ class TestBloodPressureSystolicMap:
         )
 
     def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_type_concept_id_32817(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None
         assert str(result.get('measurement_type_concept_id')) == '32817', (
             f"measurement_type_concept_id must be 32817, got {result.get('measurement_type_concept_id')!r}"
         )
 
     def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_value_120(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None
         v = result.get('value_as_number')
         assert str(v) in ('120', '120.0'), f'Expected value_as_number=120, got {v!r}'
 
     def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_unit_mmHg(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None
         assert result.get('unit_source_value') == 'mmHg', (
             f"Expected unit_source_value='mmHg', got {result.get('unit_source_value')!r}"
         )
 
     def test_WHEN_bp_is_transformed_via_systolic_map_unit_concept_id_SHOULD_be_absent_or_integer(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None
         uid = result.get('unit_concept_id')
         assert uid is None or str(uid).lstrip('-').isdigit(), (
@@ -693,7 +693,7 @@ class TestBloodPressureSystolicMap:
         )
 
     def test_WHEN_bp_is_transformed_via_systolic_map_SHOULD_have_measurement_id(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureSystolicMapR4')
         assert result is not None
         mid = result.get('measurement_id')
         assert mid is not None, 'measurement_id must not be None'
@@ -721,14 +721,14 @@ class TestBloodPressureDiastolicMap:
     """
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_return_measurement(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None, 'BloodPressureDiastolicMap returned OperationOutcome'
         assert result.get('resourceType') in ('MeasureTable', 'Measurement'), (
             f"Expected MeasureTable/Measurement, got {result.get('resourceType')}"
         )
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_concept_id_3012888(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None
         cid = result.get('measurement_concept_id')
         assert str(cid) == '3012888', (
@@ -736,27 +736,27 @@ class TestBloodPressureDiastolicMap:
         )
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_type_concept_id_32817(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None
         assert str(result.get('measurement_type_concept_id')) == '32817', (
             f"measurement_type_concept_id must be 32817, got {result.get('measurement_type_concept_id')!r}"
         )
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_value_80(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None
         v = result.get('value_as_number')
         assert str(v) in ('80', '80.0'), f'Expected value_as_number=80, got {v!r}'
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_unit_mmHg(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None
         assert result.get('unit_source_value') == 'mmHg', (
             f"Expected unit_source_value='mmHg', got {result.get('unit_source_value')!r}"
         )
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_unit_concept_id_SHOULD_be_absent_or_integer(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None
         uid = result.get('unit_concept_id')
         assert uid is None or str(uid).lstrip('-').isdigit(), (
@@ -764,7 +764,7 @@ class TestBloodPressureDiastolicMap:
         )
 
     def test_WHEN_bp_is_transformed_via_diastolic_map_SHOULD_have_measurement_id(self):
-        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMap')
+        result = transform(BLOOD_PRESSURE, 'BloodPressureDiastolicMapR4')
         assert result is not None
         mid = result.get('measurement_id')
         assert mid is not None, 'measurement_id must not be None'
@@ -814,20 +814,20 @@ class TestAllergyMap:
     """
 
     def test_WHEN_allergy_is_transformed_SHOULD_not_return_operation_outcome(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None, (
             'AllergyMap returned OperationOutcome — map may have a runtime error'
         )
 
     def test_WHEN_allergy_is_transformed_SHOULD_produce_observation_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         assert result.get('observation_id') is not None, (
             'Expected observation_id to be set; id-registry translate() may have failed'
         )
 
     def test_WHEN_allergy_is_transformed_observation_id_SHOULD_be_numeric(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         oid = result.get('observation_id')
         assert oid is not None and str(oid).isdigit(), (
@@ -835,14 +835,14 @@ class TestAllergyMap:
         )
 
     def test_WHEN_allergy_is_transformed_SHOULD_produce_person_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         assert result.get('person_id') is not None, (
             'Expected person_id from patient.reference; nested reference extraction may have failed'
         )
 
     def test_WHEN_allergy_is_transformed_person_id_SHOULD_be_numeric(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         pid = result.get('person_id')
         assert pid is not None and str(pid).isdigit(), (
@@ -850,21 +850,21 @@ class TestAllergyMap:
         )
 
     def test_WHEN_allergy_is_transformed_SHOULD_produce_visit_occurrence_id(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         assert result.get('visit_occurrence_id') is not None, (
             'Expected visit_occurrence_id from encounter.reference'
         )
 
     def test_WHEN_allergy_is_transformed_SHOULD_produce_observation_date(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         assert result.get('observation_date') is not None, (
             'Expected observation_date from recordedDate'
         )
 
     def test_WHEN_allergy_is_transformed_person_id_SHOULD_match_patient_reference(self):
-        result = transform(ALLERGY_PEANUT, 'AllergyMap')
+        result = transform(ALLERGY_PEANUT, 'AllergyMapR4')
         assert result is not None
         # person_id must equal stable_id("Patient", "test-patient") — same value as PersonMap
         # would assign for the same patient. Verify it is consistent (non-zero, numeric).
@@ -882,20 +882,20 @@ class TestMedicationStatementMap:
     """
 
     def test_WHEN_medication_is_transformed_SHOULD_not_return_operation_outcome(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapR4')
         assert result is not None, (
             'MedicationMap returned OperationOutcome — map may have a runtime error'
         )
 
     def test_WHEN_medication_is_transformed_SHOULD_produce_drug_exposure_id(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapR4')
         assert result is not None
         assert result.get('drug_exposure_id') is not None, (
             'Expected drug_exposure_id to be set; id-registry translate() may have failed'
         )
 
     def test_WHEN_medication_is_transformed_drug_exposure_id_SHOULD_be_numeric(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapR4')
         assert result is not None
         did = result.get('drug_exposure_id')
         assert did is not None and str(did).isdigit(), (
@@ -903,14 +903,14 @@ class TestMedicationStatementMap:
         )
 
     def test_WHEN_medication_is_transformed_SHOULD_produce_person_id(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapR4')
         assert result is not None
         assert result.get('person_id') is not None, (
             'Expected person_id from subject.reference; nested reference extraction may have failed'
         )
 
     def test_WHEN_medication_is_transformed_person_id_SHOULD_be_numeric(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapR4')
         assert result is not None
         pid = result.get('person_id')
         assert pid is not None and str(pid).isdigit(), (
@@ -918,7 +918,7 @@ class TestMedicationStatementMap:
         )
 
     def test_WHEN_medication_is_transformed_SHOULD_produce_start_date(self):
-        result = transform(MEDICATION_ASPIRIN, 'MedicationMap')
+        result = transform(MEDICATION_ASPIRIN, 'MedicationMapR4')
         assert result is not None
         assert result.get('drug_exposure_start_date') is not None, (
             'Expected drug_exposure_start_date from effectiveDateTime'
@@ -982,31 +982,31 @@ class TestR5MedicationStatementMap:
     """
 
     def test_WHEN_r5_medication_statement_transformed_SHOULD_return_drug_exposure(self):
-        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMap')
         assert result is not None, (
             'MedicationStatementMapR5 returned OperationOutcome — map may be missing or have error'
         )
 
     def test_WHEN_r5_medication_statement_transformed_SHOULD_produce_drug_concept_id(self):
-        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMap')
         assert result is not None
         did = result.get('drug_concept_id')
         assert did is not None, 'Expected drug_concept_id from medication.concept.coding translate()'
 
     def test_WHEN_r5_medication_statement_transformed_SHOULD_produce_drug_exposure_id(self):
-        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMap')
         assert result is not None
         assert result.get('drug_exposure_id') is not None
 
     def test_WHEN_r5_medication_statement_transformed_SHOULD_produce_start_date(self):
-        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMap')
         assert result is not None
         assert result.get('drug_exposure_start_date') is not None, (
             'Expected drug_exposure_start_date from effectiveDateTime'
         )
 
     def test_WHEN_r5_medication_statement_transformed_SHOULD_have_drug_source_value(self):
-        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMapR5')
+        result = transform_r5(MEDICATION_ASPIRIN_R5, 'MedicationStatementMap')
         assert result is not None
         src = result.get('drug_source_value')
         assert src == '1191', f'Expected drug_source_value=1191 (RxNorm code), got {src!r}'
@@ -1016,25 +1016,25 @@ class TestR5MedicationRequestMap:
     """MedicationRequestMapR5 handles FHIR R5 MedicationRequest.medication.concept."""
 
     def test_WHEN_r5_medication_request_transformed_SHOULD_return_drug_exposure(self):
-        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMap')
         assert result is not None, (
             'MedicationRequestMapR5 returned OperationOutcome — map may be missing'
         )
 
     def test_WHEN_r5_medication_request_transformed_SHOULD_produce_drug_concept_id(self):
-        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMap')
         assert result is not None
         assert result.get('drug_concept_id') is not None, (
             'Expected drug_concept_id from medication.concept.coding translate()'
         )
 
     def test_WHEN_r5_medication_request_transformed_SHOULD_produce_start_date(self):
-        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMap')
         assert result is not None
         assert result.get('drug_exposure_start_date') is not None
 
     def test_WHEN_r5_medication_request_transformed_SHOULD_have_drug_source_value(self):
-        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMapR5')
+        result = transform_r5(MEDICATION_REQUEST_METFORMIN_R5, 'MedicationRequestMap')
         assert result is not None
         src = result.get('drug_source_value')
         assert src == '860975', f'Expected drug_source_value=860975 (Metformin RxNorm), got {src!r}'
@@ -1044,22 +1044,22 @@ class TestR5ConditionMap:
     """ConditionMapR5 — Condition resource paths are backward-compatible with R4 structure."""
 
     def test_WHEN_r5_condition_transformed_SHOULD_return_condition_occurrence(self):
-        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMap')
         assert result is not None, 'ConditionMapR5 returned OperationOutcome'
 
     def test_WHEN_r5_condition_transformed_SHOULD_have_condition_concept_id(self):
-        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMap')
         assert result is not None
         cid = result.get('condition_concept_id')
         assert cid is not None, 'Expected condition_concept_id from code.coding translate()'
 
     def test_WHEN_r5_condition_transformed_SHOULD_have_start_date(self):
-        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMap')
         assert result is not None
         assert result.get('condition_start_date') is not None
 
     def test_WHEN_r5_condition_transformed_SHOULD_have_type_concept_id_32817(self):
-        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMapR5')
+        result = transform_r5(CONDITION_FEVER_R5, 'ConditionMap')
         assert result is not None
         assert str(result.get('condition_type_concept_id')) == '32817'
 
