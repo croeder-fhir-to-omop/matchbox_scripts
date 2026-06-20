@@ -245,16 +245,16 @@ def _enchilada_healthy() -> bool:
 
 def step_restart():
     profile = _docker_profile()
+    # Stop other profiles by stopping only their matchbox+dqd services (not enchilada, which is shared)
     for other in _ALL_PROFILES:
         if other != profile:
-            print(f'Stopping profile {other} to free memory...')
-            run(['docker', 'compose', '--profile', other, 'stop'], cwd=DQD_DIR, check=False)
+            print(f'Stopping matchbox+dqd for profile {other} to free memory...')
+            run(['docker', 'compose', 'stop', f'matchbox-{other}', f'dqd-{other}'], cwd=DQD_DIR, check=False)
     matchbox_svc = f'matchbox-{profile}'
     dqd_svc = _dqd_svc()
     matchbox_volume = f'dqd_docker_matchbox-{profile}-db'
     omop_volume = f'dqd_docker_omop-{profile}-db'
-    enchilada_up = _enchilada_healthy()
-    if enchilada_up:
+    if _enchilada_healthy():
         print(f'\n=== Restarting matchbox+dqd for profile {profile} (enchilada already healthy, leaving it running) ===')
         run(['docker', 'compose', 'stop', matchbox_svc, dqd_svc], cwd=DQD_DIR, check=False)
         run(['docker', 'compose', 'rm', '-f', matchbox_svc, dqd_svc], cwd=DQD_DIR, check=False)
