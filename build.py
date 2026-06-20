@@ -228,11 +228,42 @@ def step_release():
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=DQD_DIR)
 
 
+_ALL_PROFILES = ['r4-1.0.1', 'r5-1.0.1', 'r5-1.0.0']
+
+
+def _enchilada_healthy() -> bool:
+    import urllib.request, ssl
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        urllib.request.urlopen('https://localhost:8081/r4/metadata', context=ctx, timeout=5)
+        return True
+    except Exception:
+        return False
+
+
 def step_restart():
     profile = _docker_profile()
-    print(f'\n=== Restarting dqd_docker --profile {profile} (down -v to wipe matchbox-db, force IG reload) ===')
-    run(['docker', 'compose', '--profile', profile, 'down', '-v'], cwd=DQD_DIR, check=False)
-    run(['docker', 'compose', '--profile', profile, 'up', '-d'], cwd=DQD_DIR)
+    for other in _ALL_PROFILES:
+        if other != profile:
+            print(f'Stopping profile {other} to free memory...')
+            run(['docker', 'compose', '--profile', other, 'stop'], cwd=DQD_DIR, check=False)
+    matchbox_svc = f'matchbox-{profile}'
+    dqd_svc = _dqd_svc()
+    matchbox_volume = f'dqd_docker_matchbox-{profile}-db'
+    omop_volume = f'dqd_docker_omop-{profile}-db'
+    enchilada_up = _enchilada_healthy()
+    if enchilada_up:
+        print(f'\n=== Restarting matchbox+dqd for profile {profile} (enchilada already healthy, leaving it running) ===')
+        run(['docker', 'compose', 'stop', matchbox_svc, dqd_svc], cwd=DQD_DIR, check=False)
+        run(['docker', 'compose', 'rm', '-f', matchbox_svc, dqd_svc], cwd=DQD_DIR, check=False)
+        run(['docker', 'volume', 'rm', '-f', matchbox_volume, omop_volume], check=False)
+        run(['docker', 'compose', '--profile', profile, 'up', '-d'], cwd=DQD_DIR)
+    else:
+        print(f'\n=== Restarting dqd_docker --profile {profile} (down -v to wipe matchbox-db, force IG reload) ===')
+        run(['docker', 'compose', '--profile', profile, 'down', '-v'], cwd=DQD_DIR, check=False)
+        run(['docker', 'compose', '--profile', profile, 'up', '-d'], cwd=DQD_DIR)
     health_url = _matchbox_health_url()
     print(f'Waiting for matchbox to become healthy ({health_url})...')
     run([
