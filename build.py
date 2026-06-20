@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import os
 import platform
 import subprocess
 import sys
@@ -55,13 +56,18 @@ def _matchbox_image() -> str:
     }[(_FHIR_VERSION, _IG_VERSION)]
 
 
-def _matchbox_health_url() -> str:
-    port = {
+def _matchbox_port() -> int:
+    return {
         ('r4', '1.0.1'): 8080,
         ('r5', '1.0.1'): 8082,
         ('r5', '1.0.0'): 8083,
     }[(_FHIR_VERSION, _IG_VERSION)]
-    return f'http://localhost:{port}/matchboxv3/actuator/health'
+
+def _matchbox_health_url() -> str:
+    return f'http://localhost:{_matchbox_port()}/matchboxv3/actuator/health'
+
+def _matchbox_base_url() -> str:
+    return f'http://localhost:{_matchbox_port()}'
 
 STEPS = ['mvn', 'ig', 'docker', 'enchilada', 'restart', 'stop', 'etl', 'test', 'release']
 DEFAULT_STEPS = ['ig', 'docker', 'enchilada', 'restart', 'test']
@@ -109,9 +115,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def run(cmd, cwd=None, check=True):
+def run(cmd, cwd=None, check=True, env=None):
     print(f'\n>>> {" ".join(str(c) for c in cmd)}')
-    result = subprocess.run([str(c) for c in cmd], cwd=str(cwd) if cwd else None, check=check)
+    result = subprocess.run([str(c) for c in cmd], cwd=str(cwd) if cwd else None, check=check, env=env)
     return result.returncode
 
 
@@ -354,7 +360,9 @@ def _analyze_report(path):
 
 def step_test():
     print('\n=== Running integration tests ===')
-    run([*PYTEST, 'tests/test_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR)
+    env = os.environ.copy()
+    env['MATCHBOX_URL'] = _matchbox_base_url()
+    run([*PYTEST, 'tests/test_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR, env=env)
 
 
 STEP_FNS = {
