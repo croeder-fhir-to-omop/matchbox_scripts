@@ -65,27 +65,27 @@ def _retrying(fn, passes, attempts=5, delay=3):
 
 PATIENT_MALE = {
     "resourceType": "Patient",
-    "id": "test-male",
+    "id": "1",
     "gender": "male",
     "birthDate": "1980-01-01",
 }
 
 PATIENT_FEMALE = {
     "resourceType": "Patient",
-    "id": "test-female",
+    "id": "2",
     "gender": "female",
     "birthDate": "1985-06-15",
 }
 
 PATIENT_NO_GENDER = {
     "resourceType": "Patient",
-    "id": "test-nogender",
+    "id": "3",
     "birthDate": "1990-03-20",
 }
 
 PATIENT_WHITE = {
     "resourceType": "Patient",
-    "id": "test-white",
+    "id": "4",
     "gender": "female",
     "birthDate": "1970-01-01",
     "extension": [
@@ -107,7 +107,7 @@ PATIENT_WHITE = {
 
 PATIENT_HISPANIC = {
     "resourceType": "Patient",
-    "id": "test-hispanic",
+    "id": "5",
     "gender": "male",
     "birthDate": "1975-05-10",
     "extension": [
@@ -129,19 +129,19 @@ PATIENT_HISPANIC = {
 
 ENCOUNTER_AMB = {
     "resourceType": "Encounter",
-    "id": "test-amb",
+    "id": "101",
     "status": "completed",
     "class": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"}]}],
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "actualPeriod": {"start": "2020-01-01T09:00:00Z", "end": "2020-01-01T10:00:00Z"},
 }
 
 ENCOUNTER_IMP = {
     "resourceType": "Encounter",
-    "id": "test-imp",
+    "id": "102",
     "status": "completed",
     "class": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "IMP"}]}],
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "actualPeriod": {"start": "2020-02-01T09:00:00Z", "end": "2020-02-03T12:00:00Z"},
 }
 
@@ -151,8 +151,8 @@ OBSERVATION_LABORATORY = {
     "status": "final",
     "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}],
     "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]},
-    "subject": {"reference": "Patient/test"},
-    "encounter": {"reference": "Encounter/test"},
+    "subject": {"reference": "Patient/1"},
+    "encounter": {"reference": "Encounter/101"},
     "effectiveDateTime": "2020-03-15",
     "valueQuantity": {"value": 72.5, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"},
 }
@@ -163,7 +163,7 @@ PROCEDURE_DATETIME = {
     "id": "test-procedure-dt",
     "status": "completed",
     "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "occurrenceDateTime": "2020-03-15T10:00:00Z",
 }
 
@@ -172,7 +172,7 @@ PROCEDURE_PERIOD = {
     "id": "test-procedure-period",
     "status": "completed",
     "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "occurrencePeriod": {"start": "2020-03-15T10:00:00Z", "end": "2020-03-15T11:00:00Z"},
 }
 
@@ -182,7 +182,7 @@ OBSERVATION_SMOKING = {
     "status": "final",
     "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "social-history"}]}],
     "code": {"coding": [{"system": "http://loinc.org", "code": "72166-2", "display": "Tobacco smoking status"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "effectiveDateTime": "2020-03-15",
     # valueCodeableConcept — triggers the undefined variable 'b' bug in ObservationMap
     "valueCodeableConcept": {
@@ -196,7 +196,7 @@ OBSERVATION_WITH_UNIT = {
     "status": "final",
     "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}],
     "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "effectiveDateTime": "2020-03-15",
     "valueQuantity": {"value": 72.5, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"},
 }
@@ -238,10 +238,10 @@ class TestPersonMapLocal:
 
 ENCOUNTER_WITH_PERIOD = {
     "resourceType": "Encounter",
-    "id": "test-period",
+    "id": "103",
     "status": "completed",
     "class": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"}]}],
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "actualPeriod": {"start": "2020-01-01T09:00:00Z", "end": "2020-01-01T10:00:00Z"},
     "admission": {
         "dischargeDisposition": {
@@ -421,7 +421,7 @@ VITAL_SIGN_TEMPERATURE = {
     "status": "final",
     "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
     "code": {"coding": [{"system": "http://loinc.org", "code": "8310-5", "display": "Body temperature"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "effectiveDateTime": "2020-03-15T09:00:00Z",
     "valueQuantity": {"value": 37.2, "unit": "Cel", "system": "http://unitsofmeasure.org", "code": "Cel"},
 }
@@ -432,7 +432,7 @@ VITAL_SIGN_WEIGHT = {
     "status": "final",
     "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
     "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "effectiveDateTime": "2020-03-15T09:00:00Z",
     "valueQuantity": {"value": 72.5, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"},
 }
@@ -474,7 +474,7 @@ PROCEDURE_WITH_DATETIME = {
     "id": "test-proc-type",
     "status": "completed",
     "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "occurrenceDateTime": "2020-03-15T10:00:00Z",
 }
 
@@ -567,7 +567,7 @@ BLOOD_PRESSURE = {
     "meta": {"profile": ["http://hl7.org/fhir/StructureDefinition/bp"]},
     "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
     "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]},
-    "subject": {"reference": "Patient/test"},
+    "subject": {"reference": "Patient/1"},
     "effectiveDateTime": "2020-03-15",
     "component": [
         {
@@ -765,8 +765,8 @@ ALLERGY_PEANUT = {
     "code": {
         "coding": [{"system": "http://snomed.info/sct", "code": "91935009", "display": "Allergy to peanuts"}]
     },
-    "patient": {"reference": "Patient/test-patient"},
-    "encounter": {"reference": "Encounter/test-encounter"},
+    "patient": {"reference": "Patient/1"},
+    "encounter": {"reference": "Encounter/101"},
     "recordedDate": "2020-03-15",
 }
 
@@ -779,7 +779,7 @@ MEDICATION_ASPIRIN = {
             "coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin"}]
         }
     },
-    "subject": {"reference": "Patient/test-patient"},
+    "subject": {"reference": "Patient/1"},
     "effectiveDateTime": "2020-03-15",
     "category": [
         {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/medication-statement-category", "code": "outpatient"}]}
