@@ -365,12 +365,15 @@ def step_test():
     print('\n=== Running integration tests ===')
     env = os.environ.copy()
     env['MATCHBOX_URL'] = _matchbox_base_url()
-    run([*PYTEST, 'tests/test_r5_fml_transforms.py', '-v',
-         f'--html={UNIT_TEST_REPORT}', '--self-contained-html'],
-        cwd=SCRIPTS_DIR, env=env)
-    container = _dqd_container()
-    subprocess.run(['docker', 'cp', str(UNIT_TEST_REPORT), f'{container}:/omop/unit_test_report.html'], check=False)
-    print(f'Unit test report copied to {container}:/omop/unit_test_report.html')
+    rc = run([*PYTEST, 'tests/test_r5_fml_transforms.py', '-v',
+              f'--html={UNIT_TEST_REPORT}', '--self-contained-html'],
+             cwd=SCRIPTS_DIR, env=env, check=False)
+    if UNIT_TEST_REPORT.exists():
+        container = _dqd_container()
+        subprocess.run(['docker', 'cp', str(UNIT_TEST_REPORT), f'{container}:/omop/unit_test_report.html'], check=False)
+        print(f'Unit test report copied to {container}:/omop/unit_test_report.html')
+    if rc != 0:
+        raise SystemExit(rc)
 
 
 STEP_FNS = {
