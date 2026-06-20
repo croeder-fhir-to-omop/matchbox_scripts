@@ -362,7 +362,7 @@ def step_test():
     print('\n=== Running integration tests ===')
     env = os.environ.copy()
     env['MATCHBOX_URL'] = _matchbox_base_url()
-    run([*PYTEST, 'tests/test_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR, env=env)
+    run([*PYTEST, 'tests/test_r5_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR, env=env)
 
 
 STEP_FNS = {
