@@ -95,10 +95,7 @@ def _package_dst() -> Path:
 
 def fixture_dirs(fhir_version: str) -> tuple[str, str]:
     """Return (test_fixtures_dir, sample_fixtures_dir) for the given FHIR version."""
-    return {
-        'r4': ('test_files',    'sample_fixtures'),
-        'r5': ('test_files_r5', 'sample_fixtures_r5'),
-    }[fhir_version]
+    return f'test_files_{fhir_version}', f'sample_fixtures_{fhir_version}'
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -287,8 +284,8 @@ def step_etl():
         'a{display:block;margin:.5rem 0;}</style>\n'
         '</head><body>\n'
         '<h2>FHIR→OMOP ETL Reports</h2>\n'
-        '<a href="etl_report.html">etl_report.html — test_files fixtures</a>\n'
-        '<a href="etl_report_samples.html">etl_report_samples.html — sample_fixtures</a>\n'
+        f'<a href="etl_report.html">etl_report.html — test_files_{_FHIR_VERSION} fixtures</a>\n'
+        f'<a href="etl_report_samples.html">etl_report_samples.html — sample_fixtures_{_FHIR_VERSION}</a>\n'
         '</body></html>\n'
     )
     subprocess.run(['docker', 'cp', str(index_path), f'{_dqd_container()}:/omop/index.html'], check=True)

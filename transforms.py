@@ -253,7 +253,7 @@ def transform_bp_diastolic(resource):
 # =============================================================================
 
 def transform_patient_r5(resource):
-    result = _call_r5(resource, 'PersonMapR5')
+    result = _call_r5(resource, 'PersonMap')
     if result:
         fhir_id = resource.get('id', '')
         try:
@@ -264,7 +264,7 @@ def transform_patient_r5(resource):
 
 
 def transform_encounter_r5(resource):
-    result = _call_r5(resource, 'EncounterVisitMapR5')
+    result = _call_r5(resource, 'EncounterVisitMap')
     if result:
         fhir_id = resource.get('id', '')
         try:
@@ -276,7 +276,7 @@ def transform_encounter_r5(resource):
 
 
 def transform_condition_r5(resource):
-    result = _call_r5(resource, 'ConditionMapR5')
+    result = _call_r5(resource, 'ConditionMap')
     if result:
         result['condition_occurrence_id'] = _next_id()
         _set_person_id(result, resource)
@@ -285,7 +285,7 @@ def transform_condition_r5(resource):
 
 
 def transform_procedure_r5(resource):
-    result = _call_r5(resource, 'ProcedureMapR5')
+    result = _call_r5(resource, 'ProcedureMap')
     if result:
         result['procedure_occurrence_id'] = _next_id()
         _set_person_id(result, resource)
@@ -294,7 +294,7 @@ def transform_procedure_r5(resource):
 
 
 def transform_allergy_r5(resource):
-    result = _call_r5(resource, 'AllergyMapR5')
+    result = _call_r5(resource, 'AllergyMap')
     if result:
         result['observation_id'] = _next_id()
         _set_person_id(result, resource, ref_key='patient')
@@ -303,7 +303,7 @@ def transform_allergy_r5(resource):
 
 
 def transform_immunization_r5(resource):
-    result = _call_r5(resource, 'ImmunizationMapR5')
+    result = _call_r5(resource, 'ImmunizationMap')
     if result:
         result['drug_exposure_id'] = _next_id()
         _set_person_id(result, resource, ref_key='patient')
@@ -312,7 +312,7 @@ def transform_immunization_r5(resource):
 
 
 def transform_measurement_r5(resource):
-    result = _call_r5(resource, 'MeasurementMapR5')
+    result = _call_r5(resource, 'MeasurementMap')
     if result:
         result['measurement_id'] = _next_id()
         _set_person_id(result, resource)
@@ -321,7 +321,7 @@ def transform_measurement_r5(resource):
 
 
 def transform_observation_r5(resource):
-    result = _call_r5(resource, 'ObservationMapR5')
+    result = _call_r5(resource, 'ObservationMap')
     if result:
         result['observation_id'] = _next_id()
         _set_person_id(result, resource)
@@ -330,7 +330,7 @@ def transform_observation_r5(resource):
 
 
 def transform_vital_signs_r5(resource):
-    result = _call_r5(resource, 'SimpleVitalSignsMapR5')
+    result = _call_r5(resource, 'SimpleVitalSignsMap')
     if result:
         result['measurement_id'] = _next_id()
         _set_person_id(result, resource)
@@ -341,9 +341,9 @@ def transform_vital_signs_r5(resource):
 def transform_medication_r5(resource):
     resource_type = resource.get('resourceType', '')
     if resource_type == 'MedicationRequest':
-        result = _call_r5(resource, 'MedicationRequestMapR5')
+        result = _call_r5(resource, 'MedicationRequestMap')
     else:
-        result = _call_r5(resource, 'MedicationStatementMapR5')
+        result = _call_r5(resource, 'MedicationStatementMap')
     if result:
         result['drug_exposure_id'] = _next_id()
         _set_person_id(result, resource)
@@ -352,7 +352,7 @@ def transform_medication_r5(resource):
 
 
 def transform_bp_panel_r5(resource):
-    result = _call_r5(resource, 'BloodPressureVitalSignsMapR5')
+    result = _call_r5(resource, 'BloodPressureVitalSignsMap')
     if result:
         result['measurement_id'] = _next_id()
         _set_person_id(result, resource)
@@ -361,7 +361,7 @@ def transform_bp_panel_r5(resource):
 
 
 def transform_bp_systolic_r5(resource):
-    result = _call_r5(resource, 'BloodPressureSystolicMapR5')
+    result = _call_r5(resource, 'BloodPressureSystolicMap')
     if result:
         result['measurement_id'] = _next_id()
         _set_person_id(result, resource)
@@ -370,7 +370,7 @@ def transform_bp_systolic_r5(resource):
 
 
 def transform_bp_diastolic_r5(resource):
-    result = _call_r5(resource, 'BloodPressureDiastolicMapR5')
+    result = _call_r5(resource, 'BloodPressureDiastolicMap')
     if result:
         result['measurement_id'] = _next_id()
         _set_person_id(result, resource)
