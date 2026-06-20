@@ -36,23 +36,24 @@ def test_WHEN_report_has_legend_table_SHOULD_not_count_legend_rows_as_errors(tmp
 
 def test_WHEN_no_version_flag_SHOULD_default_to_r4():
     args = parse_args([])
-    assert args.version == 'r4'
+    assert args.fhir_version == 'r4'
+    assert args.ig_version == '1.0.1'
 
 
 def test_WHEN_version_r5_SHOULD_parse_correctly():
-    args = parse_args(['--version', 'r5'])
-    assert args.version == 'r5'
+    args = parse_args(['--fhir-version', 'r5'])
+    assert args.fhir_version == 'r5'
 
 
 def test_WHEN_version_r4_SHOULD_parse_correctly():
-    args = parse_args(['--version', 'r4'])
-    assert args.version == 'r4'
+    args = parse_args(['--fhir-version', 'r4'])
+    assert args.fhir_version == 'r4'
 
 
 def test_WHEN_version_r4_fixture_dirs_SHOULD_use_r4_directories():
     dirs = fixture_dirs('r4')
-    assert dirs[0] == 'test_files'
-    assert dirs[1] == 'sample_fixtures'
+    assert dirs[0] == 'test_files_r4'
+    assert dirs[1] == 'sample_fixtures_r4'
 
 
 def test_WHEN_version_r5_fixture_dirs_SHOULD_use_r5_directories():
@@ -67,8 +68,9 @@ def test_WHEN_steps_provided_SHOULD_parse_step_names():
 
 
 def test_WHEN_version_and_steps_SHOULD_parse_both():
-    args = parse_args(['--version', 'r5', 'etl'])
-    assert args.version == 'r5'
+    args = parse_args(['--fhir-version', 'r5', '--ig-version', '1.0.0', 'etl'])
+    assert args.fhir_version == 'r5'
+    assert args.ig_version == '1.0.0'
     assert args.steps == ['etl']
 
 
