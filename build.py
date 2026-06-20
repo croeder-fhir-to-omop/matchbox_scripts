@@ -2,19 +2,23 @@
 """
 Build pipeline: IG → matchbox JAR → Docker images → restart → tests → release.
 
+Two independent dimensions:
+  --fhir-version r4|r5      FHIR protocol version (default: r4)
+  --ig-version 1.0.0|1.0.1  IG package version   (default: 1.0.1)
+
 Usage:
-  python3 build.py                            # full pipeline (ig docker enchilada restart test)
-  python3 build.py mvn                        # rebuild matchbox JAR only (skips tests)
-  python3 build.py ig                         # rebuild IG only
-  python3 build.py docker                     # rebuild matchbox Docker image only
-  python3 build.py enchilada                  # rebuild enchilada Docker image only
-  python3 build.py restart                    # restart dqd_docker (wipes matchbox-db)
-  python3 build.py etl                        # re-run ETL in container; analyze etl_report.html
-  python3 build.py test                       # run matchbox_scripts integration tests
-  python3 build.py release                    # build and push both images to Docker Hub
-  python3 build.py mvn ig release             # full release with Java + IG rebuild
-  python3 build.py --version r5 etl           # run ETL with R5 fixtures
-  python3 build.py --version r5 docker restart etl  # R5 stack
+  python3 build.py                                          # full pipeline (r4, ig 1.0.1)
+  python3 build.py mvn                                      # rebuild matchbox JAR only
+  python3 build.py ig                                       # rebuild IG only
+  python3 build.py docker                                   # rebuild matchbox Docker image only
+  python3 build.py enchilada                                # rebuild enchilada Docker image only
+  python3 build.py restart                                  # restart dqd_docker (wipes matchbox-db)
+  python3 build.py etl                                      # re-run ETL; analyze etl_report.html
+  python3 build.py test                                     # run integration tests
+  python3 build.py release                                  # build and push images to Docker Hub
+  python3 build.py mvn ig release                           # full release with Java + IG rebuild
+  python3 build.py --fhir-version r5 etl                   # R5, IG 1.0.1
+  python3 build.py --fhir-version r5 --ig-version 1.0.0 etl  # R5, IG 1.0.0 (v100 stack)
 """
 
 import argparse
@@ -33,43 +37,76 @@ DQD_DIR         = REPO_ROOT / 'dqd_docker'
 ENCHILADA_DIR   = REPO_ROOT / 'enchilada'
 SCRIPTS_DIR   = Path(__file__).parent
 PACKAGE_SRC   = IG_DIR / 'output' / 'package.tgz'
-PACKAGE_DST   = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.1.tgz'
+PACKAGE_DST   = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.1.tgz'  # default; see _package_dst()
 MATCHBOX_SRC  = REPO_ROOT / 'matchbox' / 'matchbox-server'
 PYTEST        = [SCRIPTS_DIR / 'env' / 'bin' / 'python3', '-m', 'pytest']
 ETL_REPORT    = SCRIPTS_DIR / 'etl_report.html'
 
 
 def _dqd_container() -> str:
-    return 'dqd_docker-dqd-r5-1' if _FHIR_VERSION == 'r5' else 'dqd_docker-dqd-1'
+    return f'dqd_docker-{_dqd_svc()}-1'
 
 
 def _matchbox_image() -> str:
-    return f'croeder/matchbox:{_FHIR_VERSION}'
+    return {
+        ('r4', '1.0.1'): 'croeder/matchbox:r4',
+        ('r5', '1.0.1'): 'croeder/matchbox:r5',
+        ('r5', '1.0.0'): 'croeder/matchbox:r5-1.0.0',
+    }[(_FHIR_VERSION, _IG_VERSION)]
 
 
 def _matchbox_health_url() -> str:
-    port = 8082 if _FHIR_VERSION == 'r5' else 8080
+    port = {
+        ('r4', '1.0.1'): 8080,
+        ('r5', '1.0.1'): 8082,
+        ('r5', '1.0.0'): 8083,
+    }[(_FHIR_VERSION, _IG_VERSION)]
     return f'http://localhost:{port}/matchboxv3/actuator/health'
 
 STEPS = ['mvn', 'ig', 'docker', 'enchilada', 'restart', 'stop', 'etl', 'test', 'release']
 DEFAULT_STEPS = ['ig', 'docker', 'enchilada', 'restart', 'test']
 
-# Version-controlled globals — overridden by --version flag in main()
+# Version-controlled globals — overridden by --fhir-version / --ig-version flags in main()
 _FHIR_VERSION = 'r4'
+_IG_VERSION   = '1.0.1'
 
 
-def fixture_dirs(version: str) -> tuple[str, str]:
+def _docker_profile() -> str:
+    """Compose profile for the current (fhir_version, ig_version) stack."""
+    return {
+        ('r4', '1.0.1'): 'r4-1.0.1',
+        ('r5', '1.0.1'): 'r5-1.0.1',
+        ('r5', '1.0.0'): 'r5-1.0.0',
+    }[(_FHIR_VERSION, _IG_VERSION)]
+
+
+def _dqd_svc() -> str:
+    """docker-compose service name for the DQD container in the current stack."""
+    return {
+        ('r4', '1.0.1'): 'dqd-r4-1.0.1',
+        ('r5', '1.0.1'): 'dqd-r5-1.0.1',
+        ('r5', '1.0.0'): 'dqd-r5-1.0.0',
+    }[(_FHIR_VERSION, _IG_VERSION)]
+
+
+def _package_dst() -> Path:
+    return MATCHBOX_DIR / 'igs' / f'hl7.fhir.uv.omop-{_IG_VERSION}.tgz'
+
+
+def fixture_dirs(fhir_version: str) -> tuple[str, str]:
     """Return (test_fixtures_dir, sample_fixtures_dir) for the given FHIR version."""
     return {
-        'r4': ('test_files', 'sample_fixtures'),
+        'r4': ('test_files',    'sample_fixtures'),
         'r5': ('test_files_r5', 'sample_fixtures_r5'),
-    }[version]
+    }[fhir_version]
 
 
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='FHIR→OMOP build pipeline')
-    parser.add_argument('--version', choices=['r4', 'r5'], default='r4',
-                        help='FHIR version to target (default: r4)')
+    parser.add_argument('--fhir-version', choices=['r4', 'r5'], default='r4',
+                        help='FHIR protocol version (default: r4)')
+    parser.add_argument('--ig-version', choices=['1.0.0', '1.0.1'], default='1.0.1',
+                        help='IG package version (default: 1.0.1)')
     parser.add_argument('steps', nargs='*',
                         help=f'Build steps to run (default: {DEFAULT_STEPS})')
     return parser.parse_args(argv)
@@ -97,8 +134,9 @@ def step_ig():
         'ghcr.io/bonfhir/ig-toolbox:latest',
         'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', 'https://tx.fhir.org',
     ])
-    print(f'\n>>> cp {PACKAGE_SRC} {PACKAGE_DST}')
-    shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
+    dst = _package_dst()
+    print(f'\n>>> cp {PACKAGE_SRC} {dst}')
+    shutil.copy2(PACKAGE_SRC, dst)
     print('IG package copied.')
 
 
@@ -156,11 +194,15 @@ def _strip_package_deps(tgz_path: Path) -> None:
 
 
 def step_docker():
-    svc = 'matchbox-r5' if _FHIR_VERSION == 'r5' else 'matchbox'
+    build_svc = {
+        ('r4', '1.0.1'): 'matchbox',
+        ('r5', '1.0.1'): 'matchbox-r5-1.0.1',
+        ('r5', '1.0.0'): 'matchbox-r5-1.0.0',
+    }[(_FHIR_VERSION, _IG_VERSION)]
     print(f'\n=== Building {_matchbox_image()} Docker image ===')
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', svc], cwd=MATCHBOX_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', build_svc], cwd=MATCHBOX_DIR)
 
 
 def step_enchilada():
@@ -184,7 +226,7 @@ def step_release():
 
 
 def step_restart():
-    profile = _FHIR_VERSION
+    profile = _docker_profile()
     print(f'\n=== Restarting dqd_docker --profile {profile} (down -v to wipe matchbox-db, force IG reload) ===')
     run(['docker', 'compose', '--profile', profile, 'down', '-v'], cwd=DQD_DIR, check=False)
     run(['docker', 'compose', '--profile', profile, 'up', '-d'], cwd=DQD_DIR)
@@ -198,7 +240,7 @@ def step_restart():
 
 
 def step_stop():
-    profile = _FHIR_VERSION
+    profile = _docker_profile()
     print(f'\n=== Stopping dqd_docker --profile {profile} containers (frees memory) ===')
     run(['docker', 'compose', '--profile', profile, 'stop'], cwd=DQD_DIR, check=False)
 
@@ -209,8 +251,7 @@ def step_etl():
     # Ensure the dqd container for this profile is running the current image.
     # This is a no-op if already up-to-date, but catches the case where the
     # other profile's ETL rebuilt the shared image without restarting this container.
-    dqd_svc = 'dqd-r5' if _FHIR_VERSION == 'r5' else 'dqd'
-    run(['docker', 'compose', '--profile', _FHIR_VERSION, 'up', '-d', '--no-deps', dqd_svc], cwd=DQD_DIR)
+    run(['docker', 'compose', '--profile', _docker_profile(), 'up', '-d', '--no-deps', _dqd_svc()], cwd=DQD_DIR)
     print('\n=== Re-running ETL in dqd container ===')
     test_dir, sample_dir = fixture_dirs(_FHIR_VERSION)
     # REPORT_PATH = dirname(DB_PATH)/etl_report.html, so use subdirs to get separate reports.
@@ -225,7 +266,7 @@ def step_etl():
              'bash', '-c',
              f'mkdir -p $(dirname {tmp_db}) && rm -f {tmp_db} && '
              f'OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
-             f'python3 /etl/load_duckdb.py --fixtures-dir {fixtures_dir} --fhir-version {_FHIR_VERSION}'])
+             f'python3 /etl/load_duckdb.py --fixtures-dir {fixtures_dir} --fhir-version {_FHIR_VERSION} --ig-version {_IG_VERSION}'])
 
         print(f'\n>>> docker cp {container}:{tmp_report} {local_report}')
         subprocess.run(['docker', 'cp', f'{container}:{tmp_report}', str(local_report)], check=True)
@@ -373,9 +414,10 @@ def _max_mtime(paths):
 
 def _ig_stale():
     """True if fhir-omop-ig/input/ is newer than the copied IG package."""
-    if not PACKAGE_DST.exists():
+    dst = _package_dst()
+    if not dst.exists():
         return True
-    return _max_mtime([IG_DIR / 'input']) > PACKAGE_DST.stat().st_mtime
+    return _max_mtime([IG_DIR / 'input']) > dst.stat().st_mtime
 
 
 def _matchbox_image_stale():
@@ -396,7 +438,7 @@ def _enchilada_image_stale():
 
 def _dqd_image_stale():
     """True if ETL sources are newer than the local dqd image."""
-    test_dir, sample_dir = fixture_dirs(_FHIR_VERSION)
+    test_dir, sample_dir = fixture_dirs(_FHIR_VERSION)  # fixtures depend only on FHIR version
     test_path   = SCRIPTS_DIR / test_dir
     sample_path = SCRIPTS_DIR / sample_dir
     sources = (
@@ -415,12 +457,11 @@ def _dqd_image_stale():
 
 def _rebuild_and_reload_dqd():
     """Build dqd image locally (no push) and recreate the dqd container."""
-    dqd_svc = 'dqd-r5' if _FHIR_VERSION == 'r5' else 'dqd'
     print('\n=== [auto] dqd sources changed — rebuilding image (local only) ===')
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
     print('\n=== [auto] Reloading dqd container ===')
     # --no-deps: don't touch matchbox; recreates dqd only if image changed
-    run(['docker', 'compose', '--profile', _FHIR_VERSION, 'up', '-d', '--no-deps', dqd_svc], cwd=DQD_DIR)
+    run(['docker', 'compose', '--profile', _docker_profile(), 'up', '-d', '--no-deps', _dqd_svc()], cwd=DQD_DIR)
 
 
 # Each entry: (human label, stale_check_fn, auto_fix_fn)
@@ -443,16 +484,16 @@ def _run_prereqs(step):
 
 
 def main():
-    global _FHIR_VERSION
+    global _FHIR_VERSION, _IG_VERSION
     parsed = parse_args()
-    _FHIR_VERSION = parsed.version
+    _FHIR_VERSION = parsed.fhir_version
+    _IG_VERSION   = parsed.ig_version
     steps = parsed.steps or DEFAULT_STEPS
     unknown = [s for s in steps if s not in STEP_FNS]
     if unknown:
         print(f'Unknown steps: {unknown}. Valid: {STEPS}')
         sys.exit(1)
-    if _FHIR_VERSION != 'r4':
-        print(f'\n=== FHIR version: {_FHIR_VERSION.upper()} ===')
+    print(f'\n=== Stack: FHIR {_FHIR_VERSION.upper()}, IG {_IG_VERSION} ===')
     for step in steps:
         _run_prereqs(step)
         STEP_FNS[step]()
