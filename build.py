@@ -292,6 +292,7 @@ def step_etl():
         '<h2>FHIR→OMOP ETL Reports</h2>\n'
         f'<a href="etl_report.html">etl_report.html — test_files_{_FHIR_VERSION} fixtures</a>\n'
         f'<a href="etl_report_samples.html">etl_report_samples.html — sample_fixtures_{_FHIR_VERSION}</a>\n'
+        '<a href="unit_test_report.html">unit_test_report.html — pytest unit tests</a>\n'
         '</body></html>\n'
     )
     subprocess.run(['docker', 'cp', str(index_path), f'{_dqd_container()}:/omop/index.html'], check=True)
@@ -358,11 +359,18 @@ def _analyze_report(path):
     return counts
 
 
+UNIT_TEST_REPORT = SCRIPTS_DIR / 'unit_test_report.html'
+
 def step_test():
     print('\n=== Running integration tests ===')
     env = os.environ.copy()
     env['MATCHBOX_URL'] = _matchbox_base_url()
-    run([*PYTEST, 'tests/test_r5_fml_transforms.py', '-v'], cwd=SCRIPTS_DIR, env=env)
+    run([*PYTEST, 'tests/test_r5_fml_transforms.py', '-v',
+         f'--html={UNIT_TEST_REPORT}', '--self-contained-html'],
+        cwd=SCRIPTS_DIR, env=env)
+    container = _dqd_container()
+    subprocess.run(['docker', 'cp', str(UNIT_TEST_REPORT), f'{container}:/omop/unit_test_report.html'], check=False)
+    print(f'Unit test report copied to {container}:/omop/unit_test_report.html')
 
 
 STEP_FNS = {
