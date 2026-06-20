@@ -266,7 +266,7 @@ def step_etl():
              'bash', '-c',
              f'mkdir -p $(dirname {tmp_db}) && rm -f {tmp_db} && '
              f'OMOP_DB_PATH={tmp_db} OMOP_CSV_DIR={tmp_csv} '
-             f'python3 /etl/load_duckdb.py --fixtures-dir {fixtures_dir} --fhir-version {_FHIR_VERSION} --ig-version {_IG_VERSION}'])
+             f'python3 /etl/load_duckdb.py --fixtures-dir {fixtures_dir} --fhir-version {_FHIR_VERSION}'])
 
         print(f'\n>>> docker cp {container}:{tmp_report} {local_report}')
         subprocess.run(['docker', 'cp', f'{container}:{tmp_report}', str(local_report)], check=True)
