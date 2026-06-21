@@ -19,6 +19,10 @@ import requests
 _BASE_URL = None
 _BASE_URL_R5 = None
 
+# Echidna free tier enforces ~60 req/min; set TRANSFORM_SLEEP=1 when using it.
+# Not needed with enchilada (local) — defaults to 0.
+_TRANSFORM_SLEEP = float(os.environ.get('TRANSFORM_SLEEP', '0'))
+
 
 def _base_url():
     global _BASE_URL
@@ -64,7 +68,7 @@ def _ref_int(ref_str):
 
 
 def _call(resource, map_name):
-    time.sleep(1)
+    time.sleep(_TRANSFORM_SLEEP)
     r = requests.post(
         f'{_base_url()}/StructureMap/$transform',
         params={'source': f'{_IG}/{map_name}'},
@@ -79,7 +83,7 @@ def _call(resource, map_name):
 
 
 def _call_r5(resource, map_name):
-    time.sleep(1)
+    time.sleep(_TRANSFORM_SLEEP)
     r = requests.post(
         f'{_base_url_r5()}/StructureMap/$transform',
         params={'source': f'{_IG}/{map_name}'},
