@@ -1,53 +1,14 @@
 """
-Unit tests for build.py (simple r5/1.0.0 pipeline).
+Unit tests for build.py utilities.
+
 Does not require a running matchbox server, Docker, or DuckDB.
 """
 import sys
-import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from build import _analyze_report, parse_args, STEPS, DEFAULT_STEPS
-
-
-def test_WHEN_no_args_SHOULD_return_empty_steps_list():
-    args = parse_args([])
-    assert args.steps == []
-
-
-def test_WHEN_single_step_SHOULD_parse_it():
-    args = parse_args(['etl'])
-    assert args.steps == ['etl']
-
-
-def test_WHEN_multiple_steps_SHOULD_parse_all():
-    args = parse_args(['ig', 'docker', 'test'])
-    assert args.steps == ['ig', 'docker', 'test']
-
-
-def test_WHEN_fhir_version_flag_passed_SHOULD_fail():
-    with pytest.raises(SystemExit):
-        parse_args(['--fhir-version', 'r5'])
-
-
-def test_WHEN_ig_version_flag_passed_SHOULD_fail():
-    with pytest.raises(SystemExit):
-        parse_args(['--ig-version', '1.0.0'])
-
-
-def test_SHOULD_include_all_expected_steps():
-    expected = {'ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'etl', 'test'}
-    assert expected.issubset(set(STEPS))
-
-
-def test_SHOULD_have_non_empty_default_steps():
-    assert len(DEFAULT_STEPS) > 0
-
-
-def test_SHOULD_have_default_steps_all_valid():
-    for step in DEFAULT_STEPS:
-        assert step in STEPS
+from build_profiles import _analyze_report, parse_args, fixture_dirs
 
 
 def test_WHEN_report_has_legend_table_SHOULD_not_count_legend_rows_as_errors(tmp_path):
@@ -67,6 +28,50 @@ def test_WHEN_report_has_legend_table_SHOULD_not_count_legend_rows_as_errors(tmp
     assert counts.get('ERROR', 0) == 0
     assert counts.get('WARN', 0) == 0
     assert counts.get('OK', 0) == 1
+
+
+# ---------------------------------------------------------------------------
+# --version flag tests
+# ---------------------------------------------------------------------------
+
+def test_WHEN_no_version_flag_SHOULD_default_to_r4():
+    args = parse_args([])
+    assert args.fhir_version == 'r4'
+    assert args.ig_version == '1.0.1'
+
+
+def test_WHEN_version_r5_SHOULD_parse_correctly():
+    args = parse_args(['--fhir-version', 'r5'])
+    assert args.fhir_version == 'r5'
+
+
+def test_WHEN_version_r4_SHOULD_parse_correctly():
+    args = parse_args(['--fhir-version', 'r4'])
+    assert args.fhir_version == 'r4'
+
+
+def test_WHEN_version_r4_fixture_dirs_SHOULD_use_r4_directories():
+    dirs = fixture_dirs('r4')
+    assert dirs[0] == 'test_files_r4'
+    assert dirs[1] == 'sample_fixtures_r4'
+
+
+def test_WHEN_version_r5_fixture_dirs_SHOULD_use_r5_directories():
+    dirs = fixture_dirs('r5')
+    assert dirs[0] == 'test_files_r5'
+    assert dirs[1] == 'sample_fixtures_r5'
+
+
+def test_WHEN_steps_provided_SHOULD_parse_step_names():
+    args = parse_args(['etl', 'test'])
+    assert args.steps == ['etl', 'test']
+
+
+def test_WHEN_version_and_steps_SHOULD_parse_both():
+    args = parse_args(['--fhir-version', 'r5', '--ig-version', '1.0.0', 'etl'])
+    assert args.fhir_version == 'r5'
+    assert args.ig_version == '1.0.0'
+    assert args.steps == ['etl']
 
 
 def test_WHEN_report_has_only_data_rows_SHOULD_count_them_correctly(tmp_path):
