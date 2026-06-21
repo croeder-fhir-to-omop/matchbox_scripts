@@ -143,6 +143,7 @@ def step_start():
         f'until curl -sf {health_url} | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
     ])
     run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
+    step_test()
 
 
 def step_restart():
@@ -163,6 +164,7 @@ def step_restart():
     ])
     # Second pass: matchbox is now healthy, so DQD's dependency check passes.
     run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
+    step_test()
 
 
 def step_stop():
