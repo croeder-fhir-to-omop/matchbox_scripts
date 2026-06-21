@@ -13,7 +13,7 @@ Usage:
   python3 build.py docker                                   # rebuild matchbox Docker image only
   python3 build.py enchilada                                # rebuild enchilada Docker image only
   python3 build.py restart                                  # restart dqd_docker (wipes matchbox-db)
-  python3 build.py etl                                      # re-run ETL; analyze etl_report.html
+  python3 build.py etl                                      # re-run ETL; open reports at localhost
   python3 build.py test                                     # run integration tests
   python3 build.py release                                  # build and push images to Docker Hub
   python3 build.py mvn ig release                           # full release with Java + IG rebuild
@@ -41,7 +41,7 @@ PACKAGE_SRC   = IG_DIR / 'output' / 'package.tgz'
 PACKAGE_DST   = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.1.tgz'  # default; see _package_dst()
 MATCHBOX_SRC  = REPO_ROOT / 'matchbox' / 'matchbox-server'
 PYTEST        = [SCRIPTS_DIR / 'env' / 'bin' / 'python3', '-m', 'pytest']
-ETL_REPORT    = SCRIPTS_DIR / 'etl_report.html'
+ETL_REPORT    = SCRIPTS_DIR / 'etl_report_test.html'
 
 
 def _dqd_container() -> str:
@@ -92,6 +92,24 @@ def _dqd_svc() -> str:
         ('r4', '1.0.1'): 'dqd-r4-1.0.1',
         ('r5', '1.0.1'): 'dqd-r5-1.0.1',
         ('r5', '1.0.0'): 'dqd-r5-1.0.0',
+    }[(_FHIR_VERSION, _IG_VERSION)]
+
+
+def _dqd_http_port() -> int:
+    """Host port for the DQD container's static HTTP server (serves /omop)."""
+    return {
+        ('r4', '1.0.1'): 8088,
+        ('r5', '1.0.1'): 8089,
+        ('r5', '1.0.0'): 8090,
+    }[(_FHIR_VERSION, _IG_VERSION)]
+
+
+def _dqd_shiny_port() -> int:
+    """Host port for the DQD Shiny dashboard."""
+    return {
+        ('r4', '1.0.1'): 3838,
+        ('r5', '1.0.1'): 3839,
+        ('r5', '1.0.0'): 3840,
     }[(_FHIR_VERSION, _IG_VERSION)]
 
 
@@ -270,7 +288,6 @@ def step_restart():
         'bash', '-c',
         f'until curl -sf {health_url} | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
     ])
-    step_etl()
 
 
 def step_stop():
@@ -279,7 +296,7 @@ def step_stop():
     run(['docker', 'compose', '--profile', profile, 'stop'], cwd=DQD_DIR, check=False)
 
 
-ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_samples.html'
+ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_sample.html'
 
 def step_etl():
     # Ensure the dqd container for this profile is running the current image.
@@ -312,25 +329,8 @@ def step_etl():
         print(f'\n--- Report: {local_report.name} ---')
         _analyze_report(local_report)
 
-    # Write an index page at localhost:8088 linking to both reports.
-    index_path = SCRIPTS_DIR / 'etl_index.html'
-    index_path.write_text(
-        '<!DOCTYPE html>\n'
-        '<html><head><title>ETL Reports</title>\n'
-        '<style>body{font-family:sans-serif;max-width:600px;margin:2rem auto;}'
-        'a{display:block;margin:.5rem 0;}</style>\n'
-        '</head><body>\n'
-        '<h2>FHIR→OMOP ETL Reports</h2>\n'
-        f'<a href="etl_report.html">etl_report.html — test_files_{_FHIR_VERSION} fixtures</a>\n'
-        f'<a href="etl_report_samples.html">etl_report_samples.html — sample_fixtures_{_FHIR_VERSION}</a>\n'
-        '<a href="unit_test_report.html">unit_test_report.html — pytest unit tests</a>\n'
-        '</body></html>\n'
-    )
-    subprocess.run(['docker', 'cp', str(index_path), f'{_dqd_container()}:/omop/index.html'], check=True)
-
     if platform.system() == 'Darwin':
-        subprocess.run(['open', str(ETL_REPORT)])
-        subprocess.run(['open', str(ETL_REPORT_SAMPLES)])
+        subprocess.run(['open', f'http://localhost:{_dqd_http_port()}/'])
 
 
 def _analyze_report(path):
