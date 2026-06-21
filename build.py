@@ -136,19 +136,29 @@ def step_release():
 
 def step_start():
     print('\n=== Starting stack ===')
+    run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR, check=False)
+    health_url = f'http://localhost:{MATCHBOX_PORT}/matchboxv3/actuator/health'
+    run([
+        'bash', '-c',
+        f'until curl -sf {health_url} | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
+    ])
     run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
 
 
 def step_restart():
     print('\n=== Restarting stack (wiping matchbox-db to force IG reload) ===')
     run(['docker', 'compose', 'down', '-v'], cwd=DQD_DIR, check=False)
-    run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
+    # First pass: starts enchilada and matchbox; DQD may fail its dependency check
+    # since matchbox isn't healthy yet — that's expected, ignore the exit code.
+    run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR, check=False)
     health_url = f'http://localhost:{MATCHBOX_PORT}/matchboxv3/actuator/health'
     print(f'Waiting for matchbox to become healthy ({health_url})...')
     run([
         'bash', '-c',
         f'until curl -sf {health_url} | grep -q \'"status":"UP"\'; do sleep 5; done && echo "Matchbox is up"',
     ])
+    # Second pass: matchbox is now healthy, so DQD's dependency check passes.
+    run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR)
 
 
 def step_stop():
