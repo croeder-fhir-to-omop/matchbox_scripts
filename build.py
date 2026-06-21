@@ -147,7 +147,11 @@ def step_start():
 
 def step_restart():
     print('\n=== Restarting stack (wiping matchbox-db to force IG reload) ===')
-    run(['docker', 'compose', 'down', '-v'], cwd=DQD_DIR, check=False)
+    run(['docker', 'compose', 'down'], cwd=DQD_DIR, check=False)
+    # Wipe only matchbox-db (forces IG reload) and omop-db; preserve enchilada-db
+    # so the SQLite vocabulary cache survives restarts (saves ~2 min CSV reload).
+    for vol in ['dqd_docker_matchbox-db', 'dqd_docker_omop-db']:
+        run(['docker', 'volume', 'rm', '-f', vol], check=False)
     # First pass: starts enchilada and matchbox; DQD may fail its dependency check
     # since matchbox isn't healthy yet — that's expected, ignore the exit code.
     run(['docker', 'compose', 'up', '-d'], cwd=DQD_DIR, check=False)
