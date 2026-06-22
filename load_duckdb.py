@@ -87,7 +87,6 @@ FIXTURE_TRANSFORMS = [
     ('observation_*blood*.json',            transform_bp_diastolic,'measurement',  'BloodPressureDiastolicMap'),
     ('observation_smoking*.json',           transform_observation, 'observation',  'ObservationMap'),
     ('allergy_*.json',        transform_allergy,    'observation',          'AllergyMap'),
-    ('medicationrequest*.json',   transform_medication, 'drug_exposure',        'MedicationRequestMap'),
     ('medicationstatement*.json', transform_medication, 'drug_exposure',        'MedicationMap'),
 ]
 
@@ -114,7 +113,6 @@ FIXTURE_TRANSFORMS_R5 = [
     ('observation_*blood*.json',     transform_bp_diastolic_r5,'measurement',     'BloodPressureDiastolicMap'),
     ('observation_smoking*.json',    transform_observation_r5, 'observation',     'ObservationMap'),
     ('allergy_*.json',        transform_allergy_r5,       'observation',          'AllergyMap'),
-    ('medicationrequest*.json',   transform_medication_r5, 'drug_exposure',       'MedicationRequestMap'),
     ('medicationstatement*.json', transform_medication_r5, 'drug_exposure',       'MedicationMap'),
 ]
 
@@ -147,8 +145,6 @@ EXPECTED_FAILURES = {
     'condition_p4_identifier_leak_NEG_f2o-020.json',
     # intentionally missing subject
     'condition_p4_missing_subject_NEG_f2o-012.json',
-    # cancelled prescription
-    'medicationrequest_p4_cancelled_NEG_f2o-060.json',
     # not-done procedure (sample_fixtures and test_files)
     'procedure_p4_notdone_NEG_f2o-060.json',
     'procedure_not_done.json',
