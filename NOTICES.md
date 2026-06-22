@@ -16,9 +16,26 @@ LOINC is developed and maintained by Regenstrief Institute, Inc. More informatio
 
 ## SNOMED CT
 
+> **⚠ License required outside the United States.**
+> SNOMED CT is not freely available in all countries. Users outside a SNOMED International member country must obtain a separate commercial license before using this project with SNOMED CT content. See https://www.snomed.org/snomed-ct/get-snomed to determine your country's membership status and licensing path.
+
 SNOMED CT® is a registered trademark of SNOMED International. SNOMED CT content is copyright © 2002–2026 International Health Terminology Standards Development Organisation (IHTSDO). All rights reserved.
 
-SNOMED CT codes are used in test fixtures in this project. Use of SNOMED CT requires a license from SNOMED International or a national member organization. In the United States, SNOMED CT is available at no cost through the National Library of Medicine (NLM) for qualifying uses. See https://www.snomed.org/snomed-ct/get-snomed for licensing information.
+SNOMED CT codes are used in test fixtures in this project. Use of SNOMED CT requires a license from SNOMED International or a national member organization.
+
+### Licensing by country
+
+**United States** — SNOMED CT is available at no cost through the National Library of Medicine (NLM) for qualifying uses: https://www.nlm.nih.gov/healthit/snomedct/
+
+**Australia** — Australia is a SNOMED International member. SNOMED CT is available through the Australian Digital Health Agency (ADHA): https://www.digitalhealth.gov.au/healthcare-providers/initiatives-and-programs/snomed-ct-au
+
+**Canada** — Canada is a SNOMED International member. SNOMED CT is available through Canada Health Infoway: https://www.infoway-inforoute.ca/en/solutions/clinical-terminologies
+
+**Netherlands** — The Netherlands is a founding member of SNOMED International. SNOMED CT is available through Nictiz, the Dutch national competence centre for health information standards: https://www.nictiz.nl
+
+**Poland** — Poland is a SNOMED International member. SNOMED CT is available through Centrum e-Zdrowia (Centre for eHealth): https://cez.gov.pl
+
+Users in member countries receive SNOMED CT access through their national member organization at no additional cost. Users in non-member countries must obtain a commercial license directly from SNOMED International. See the full member country list at https://www.snomed.org/our-members.
 
 ---
 
