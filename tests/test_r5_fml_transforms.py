@@ -21,6 +21,7 @@ import requests
 
 BASE_URL = os.environ.get('MATCHBOX_URL', 'http://localhost:8080') + '/matchboxv3/fhir'
 IG = 'http://hl7.org/fhir/uv/omop/StructureMap'
+_TRANSFORM_SLEEP = float(os.environ.get('TRANSFORM_SLEEP', '1'))
 
 HEADERS = {
     'Content-Type': 'application/fhir+json',
@@ -29,7 +30,7 @@ HEADERS = {
 
 
 def transform(resource: dict, map_name: str) -> dict | None:
-    time.sleep(1)
+    time.sleep(_TRANSFORM_SLEEP)
     r = requests.post(
         f'{BASE_URL}/StructureMap/$transform',
         params={'source': f'{IG}/{map_name}'},
@@ -50,9 +51,8 @@ transform_r5 = transform
 def _retrying(fn, passes, attempts=5, delay=3):
     """Call fn() up to attempts times until passes(result) is True, sleeping between tries.
 
-    Handles Echidna cold-cache misses where a valid resource is returned but
-    terminology-translated fields (e.g. drug_concept_id) are missing on first call.
-    Echidna may take several seconds to populate a vocabulary on first use.
+    Handles Echidna rate-limiting: a valid resource is returned but terminology-translated
+    fields (e.g. drug_concept_id) are absent when the upstream lookup was throttled.
     """
     for i in range(attempts):
         result = fn()
