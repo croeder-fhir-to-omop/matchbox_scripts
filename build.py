@@ -44,6 +44,7 @@ REPO_ROOT        = Path(__file__).parent.parent
 IG_DIR           = REPO_ROOT / 'fhir-omop-ig'
 MATCHBOX_DIR     = REPO_ROOT / 'matchbox_docker'
 DQD_DIR          = REPO_ROOT / 'dqd_docker'
+ENCHILADA_DIR    = REPO_ROOT / 'enchilada'
 SCRIPTS_DIR      = Path(__file__).parent
 PACKAGE_SRC      = IG_DIR / 'output' / 'package.tgz'
 PACKAGE_DST      = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.0.tgz'
@@ -239,6 +240,8 @@ def step_release():
         cwd=MATCHBOX_DIR, env=env)
     run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push'],
         cwd=DQD_DIR)
+    run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push'],
+        cwd=ENCHILADA_DIR)
 
 
 def step_start():
