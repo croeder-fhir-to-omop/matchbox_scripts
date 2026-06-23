@@ -85,3 +85,11 @@ python3 omop_to_csv.py condition_fever_output.json
 - [HL7 FHIR-to-OMOP IG](https://hl7.org/fhir/uv/omop/) — defines the 11 StructureMaps used here
 - [Echidna terminology server](https://echidna.fhir.org/) — OMOP vocabulary for concept lookups, configured in matchbox
 - [OHDSI Athena](https://athena.ohdsi.org/search-terms/start) — look up OMOP concept IDs
+
+## License
+
+Licensed under the [Apache License 2.0](./LICENSE). Copyright 2026 Christophe Roeder.
+
+This repository includes test fixtures that reference clinical terminology content (LOINC, SNOMED CT, RxNorm, ICD-10-CM, CVX, UCUM). See [NOTICES.md](https://github.com/croeder-fhir-to-omop/.github/blob/main/profile/NOTICES.md) for third-party vocabulary license details.
+
+See the [organization README](https://github.com/croeder-fhir-to-omop) for full pipeline documentation.
