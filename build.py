@@ -187,8 +187,22 @@ def _strip_package_deps(tgz_path: Path) -> None:
             tf.addfile(member, io.BytesIO(data))
 
 
+def _ig_commit() -> str:
+    result = subprocess.run(
+        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, cwd=str(IG_DIR)
+    )
+    return result.stdout.strip() if result.returncode == 0 else ''
+
+
 def _matchbox_compose_env() -> dict:
-    return {**os.environ, 'MATCHBOX_TAG': _matchbox_tag()}
+    from datetime import datetime, timezone
+    return {
+        **os.environ,
+        'MATCHBOX_TAG':    _matchbox_tag(),
+        'IG_SOURCE':       _IG_SOURCE,
+        'IG_COMMIT':       _ig_commit(),
+        'IG_BUILD_DATE':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    }
 
 
 def step_docker():
