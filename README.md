@@ -79,6 +79,38 @@ python3 omop_to_csv.py condition_fever_output.json
 | `check_structure_maps.sh` | Lists loaded StructureMaps |
 | `upload_personmap.sh` | Uploads `PersonMap.fml` to matchbox |
 
+## Building images
+
+`build.py` is the build pipeline for the default r5/1.0.0 stack. It manages the full sequence: IG build → matchbox JAR → Docker image → publish.
+
+```bash
+python3 build.py                      # full pipeline; builds from HL7/fhir-omop-ig upstream/main → croeder/matchbox:latest
+python3 build.py ig docker release    # IG + image + push only
+python3 build.py --ig-source main ig docker release    # fork main → croeder/matchbox:main
+python3 build.py --ig-source <branch> ig docker        # fork branch → croeder/matchbox:<branch>
+python3 build.py --tx-server n/a ig                    # skip terminology validation during IG build
+```
+
+Every built image carries labels identifying the IG source and commit:
+
+```bash
+docker inspect croeder/matchbox:latest | python3 -c "
+import json, sys
+labels = json.load(sys.stdin)[0]['Config']['Labels']
+for k, v in labels.items():
+    if k.startswith('fhir-omop-ig'):
+        print(f'{k}: {v}')
+"
+```
+
+```
+fhir-omop-ig.source:     upstream
+fhir-omop-ig.commit:     1ec215b3f...
+fhir-omop-ig.build-date: 2026-06-23T19:05:00Z
+```
+
+See [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker) for the Dockerfile and compose files used by `build.py`.
+
 ## Links
 
 - [matchbox](https://github.com/croeder-fhir-to-omop/matchbox) — fork of [ahdis/matchbox](https://github.com/ahdis/matchbox)
