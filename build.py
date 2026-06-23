@@ -214,15 +214,31 @@ def step_docker():
         cwd=MATCHBOX_DIR, env=_matchbox_compose_env())
 
 
+def _ensure_multiarch_builder():
+    """Ensure a buildx builder with docker-container driver exists for multi-arch builds."""
+    result = subprocess.run(['docker', 'buildx', 'ls'], capture_output=True, text=True)
+    if 'multiarch' not in result.stdout:
+        print('\n>>> Creating multi-arch buildx builder (docker-container driver)')
+        subprocess.run(
+            ['docker', 'buildx', 'create', '--name', 'multiarch',
+             '--driver', 'docker-container', '--bootstrap'],
+            check=True,
+        )
+    subprocess.run(['docker', 'buildx', 'use', 'multiarch'], check=True)
+
+
 def step_release():
     print(f'\n=== Building and pushing release images ({_matchbox_image()}) ===')
+    _ensure_multiarch_builder()
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
     env = _matchbox_compose_env()
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox'], cwd=MATCHBOX_DIR, env=env)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push', 'matchbox'], cwd=MATCHBOX_DIR, env=env)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=DQD_DIR)
+    # buildx bake reads the platforms list from the compose file and pushes a proper
+    # multi-arch manifest (linux/amd64 + linux/arm64) in a single step.
+    run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push', 'matchbox'],
+        cwd=MATCHBOX_DIR, env=env)
+    run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push'],
+        cwd=DQD_DIR)
 
 
 def step_start():
