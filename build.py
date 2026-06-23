@@ -17,11 +17,17 @@ Usage:
 
   python3 build.py --ig-source upstream ig docker        # HL7 main → croeder/matchbox:upstream
   python3 build.py --ig-source fix-translate-rule-names ig docker  # branch → croeder/matchbox:fix-translate-rule-names
+  python3 build.py --tx-server n/a ig                   # skip terminology validation
 
 --ig-source values:
   upstream        fetch upstream remote and build from upstream/main
   <branch>        checkout that branch from the fhir-omop-ig local repo before building
   (omitted)       use current fhir-omop-ig checkout as-is; image tagged :latest
+
+--tx-server values:
+  https://tx.fhir.org   default HL7 terminology server
+  n/a                   skip terminology validation entirely
+  <url>                 any custom terminology server URL
 """
 
 import contextlib
@@ -55,6 +61,8 @@ DEFAULT_STEPS = ['ig', 'mvn', 'docker', 'restart', 'etl', 'test']
 # Set by main() from --ig-source; None means "use current checkout, tag as :latest"
 _IG_SOURCE: str | None = None
 
+_TX_SERVER = 'https://tx.fhir.org'
+
 
 def _matchbox_tag() -> str:
     if _IG_SOURCE is None:
@@ -73,11 +81,12 @@ def _ig_source_checkout():
         yield
         return
 
+    # Only block on staged/unstaged changes to tracked files; untracked files are fine.
     dirty = subprocess.run(
-        ['git', 'status', '--porcelain'], capture_output=True, text=True, cwd=str(IG_DIR)
-    ).stdout.strip()
+        ['git', 'diff', '--quiet', 'HEAD'], cwd=str(IG_DIR)
+    ).returncode != 0
     if dirty:
-        print('ERROR: fhir-omop-ig has uncommitted changes. Stash or commit before using --ig-source.')
+        print('ERROR: fhir-omop-ig has uncommitted changes to tracked files. Stash or commit before using --ig-source.')
         sys.exit(1)
 
     orig = subprocess.run(
@@ -110,6 +119,9 @@ def parse_args(argv=None) -> argparse.Namespace:
                              'Checks out fhir-omop-ig before the ig step and restores it after. '
                              'Sets Docker image tag to :upstream or :<branch>. '
                              'Omit to use the current checkout and tag :latest.')
+    parser.add_argument('--tx-server', metavar='URL', default='https://tx.fhir.org',
+                        help='Terminology server URL passed to the IG publisher '
+                             '(default: https://tx.fhir.org). Use "n/a" to skip terminology validation.')
     return parser.parse_args(argv)
 
 
@@ -127,7 +139,7 @@ def step_ig():
             '-v', f'{IG_DIR}:/workspace',
             '-w', '/workspace',
             'ghcr.io/bonfhir/ig-toolbox:latest',
-            'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', 'https://tx.fhir.org',
+            'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', _TX_SERVER,
         ])
         print(f'\n>>> cp {PACKAGE_SRC} {PACKAGE_DST}')
         shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
@@ -353,9 +365,10 @@ STEP_FNS = {
 
 
 def main():
-    global _IG_SOURCE
+    global _IG_SOURCE, _TX_SERVER
     parsed = parse_args()
     _IG_SOURCE = parsed.ig_source
+    _TX_SERVER = parsed.tx_server
     steps = parsed.steps or DEFAULT_STEPS
     unknown = [s for s in steps if s not in STEP_FNS]
     if unknown:
