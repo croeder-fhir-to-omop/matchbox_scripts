@@ -63,6 +63,9 @@ _IG_SOURCE: str = 'upstream'
 
 _TX_SERVER = 'https://tx.fhir.org'
 
+# Captured inside _ig_source_checkout() after the checkout; used by _matchbox_compose_env().
+_IG_COMMIT: str = ''
+
 
 def _matchbox_tag() -> str:
     if _IG_SOURCE == 'upstream':
@@ -97,6 +100,11 @@ def _ig_source_checkout():
     else:
         print(f'\n>>> git checkout {_IG_SOURCE}  (in fhir-omop-ig)')
         subprocess.run(['git', 'checkout', _IG_SOURCE], cwd=str(IG_DIR), check=True)
+
+    global _IG_COMMIT
+    _IG_COMMIT = subprocess.run(
+        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, cwd=str(IG_DIR)
+    ).stdout.strip()
 
     try:
         yield
@@ -187,20 +195,13 @@ def _strip_package_deps(tgz_path: Path) -> None:
             tf.addfile(member, io.BytesIO(data))
 
 
-def _ig_commit() -> str:
-    result = subprocess.run(
-        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, cwd=str(IG_DIR)
-    )
-    return result.stdout.strip() if result.returncode == 0 else ''
-
-
 def _matchbox_compose_env() -> dict:
     from datetime import datetime, timezone
     return {
         **os.environ,
         'MATCHBOX_TAG':    _matchbox_tag(),
         'IG_SOURCE':       _IG_SOURCE,
-        'IG_COMMIT':       _ig_commit(),
+        'IG_COMMIT':       _IG_COMMIT,
         'IG_BUILD_DATE':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
     }
 
