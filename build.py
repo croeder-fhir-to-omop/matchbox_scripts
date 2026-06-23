@@ -233,6 +233,13 @@ def _ensure_multiarch_builder():
 
 def step_release():
     print(f'\n=== Building and pushing release images ({_matchbox_image()}) ===')
+    if not _IG_COMMIT:
+        print(
+            'WARNING: ig step was not run in this invocation. '
+            'The fhir-omop-ig.commit label will reflect the current fhir-omop-ig checkout, '
+            'which may not match the IG package baked into the image. '
+            'Run "python3 build.py ig release" to guarantee an accurate label.'
+        )
     _ensure_multiarch_builder()
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
