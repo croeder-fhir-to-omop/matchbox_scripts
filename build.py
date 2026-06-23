@@ -3,19 +3,28 @@
 Simple FHIR R5 / IG 1.0.0 build pipeline.
 
 Usage:
-  python3 build.py                    # full pipeline
-  python3 build.py ig                 # rebuild IG only
-  python3 build.py mvn                # rebuild matchbox JAR only
-  python3 build.py docker             # rebuild matchbox Docker image only
-  python3 build.py release            # build and push images to Docker Hub
-  python3 build.py start              # start the stack
-  python3 build.py restart            # wipe and restart the stack (forces IG reload)
-  python3 build.py stop               # stop the stack
-  python3 build.py etl                # re-run ETL; open reports at localhost
-  python3 build.py test               # run integration tests
-  python3 build.py ig docker restart  # run specific steps in sequence
+  python3 build.py                                       # full pipeline (current IG checkout)
+  python3 build.py ig                                    # rebuild IG only
+  python3 build.py mvn                                   # rebuild matchbox JAR only
+  python3 build.py docker                                # rebuild matchbox Docker image only
+  python3 build.py release                               # build and push images to Docker Hub
+  python3 build.py start                                 # start the stack
+  python3 build.py restart                               # wipe and restart the stack (forces IG reload)
+  python3 build.py stop                                  # stop the stack
+  python3 build.py etl                                   # re-run ETL; open reports at localhost
+  python3 build.py test                                  # run integration tests
+  python3 build.py ig docker restart                     # run specific steps in sequence
+
+  python3 build.py --ig-source upstream ig docker        # HL7 main → croeder/matchbox:upstream
+  python3 build.py --ig-source fix-translate-rule-names ig docker  # branch → croeder/matchbox:fix-translate-rule-names
+
+--ig-source values:
+  upstream        fetch upstream remote and build from upstream/main
+  <branch>        checkout that branch from the fhir-omop-ig local repo before building
+  (omitted)       use current fhir-omop-ig checkout as-is; image tagged :latest
 """
 
+import contextlib
 import os
 import platform
 import subprocess
@@ -32,7 +41,6 @@ DQD_DIR          = REPO_ROOT / 'dqd_docker'
 SCRIPTS_DIR      = Path(__file__).parent
 PACKAGE_SRC      = IG_DIR / 'output' / 'package.tgz'
 PACKAGE_DST      = MATCHBOX_DIR / 'igs' / 'hl7.fhir.uv.omop-1.0.0.tgz'
-MATCHBOX_IMAGE   = 'croeder/matchbox:latest'
 MATCHBOX_PORT    = 8080
 DQD_HTTP_PORT    = 8088
 DQD_CONTAINER    = 'dqd_docker-dqd-1'
@@ -44,11 +52,64 @@ UNIT_TEST_REPORT = SCRIPTS_DIR / 'unit_test_report.html'
 STEPS = ['ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'etl', 'test']
 DEFAULT_STEPS = ['ig', 'mvn', 'docker', 'restart', 'etl', 'test']
 
+# Set by main() from --ig-source; None means "use current checkout, tag as :latest"
+_IG_SOURCE: str | None = None
+
+
+def _matchbox_tag() -> str:
+    if _IG_SOURCE is None:
+        return 'latest'
+    return _IG_SOURCE.replace('/', '-')
+
+
+def _matchbox_image() -> str:
+    return f'croeder/matchbox:{_matchbox_tag()}'
+
+
+@contextlib.contextmanager
+def _ig_source_checkout():
+    """If --ig-source was given, fetch/checkout the ref in fhir-omop-ig, then restore."""
+    if _IG_SOURCE is None:
+        yield
+        return
+
+    dirty = subprocess.run(
+        ['git', 'status', '--porcelain'], capture_output=True, text=True, cwd=str(IG_DIR)
+    ).stdout.strip()
+    if dirty:
+        print('ERROR: fhir-omop-ig has uncommitted changes. Stash or commit before using --ig-source.')
+        sys.exit(1)
+
+    orig = subprocess.run(
+        ['git', 'branch', '--show-current'], capture_output=True, text=True, cwd=str(IG_DIR)
+    ).stdout.strip()
+
+    if _IG_SOURCE == 'upstream':
+        print('\n>>> git fetch upstream  (in fhir-omop-ig)')
+        subprocess.run(['git', 'fetch', 'upstream'], cwd=str(IG_DIR), check=True)
+        print('\n>>> git checkout --detach upstream/main  (in fhir-omop-ig)')
+        subprocess.run(['git', 'checkout', '--detach', 'upstream/main'], cwd=str(IG_DIR), check=True)
+    else:
+        print(f'\n>>> git checkout {_IG_SOURCE}  (in fhir-omop-ig)')
+        subprocess.run(['git', 'checkout', _IG_SOURCE], cwd=str(IG_DIR), check=True)
+
+    try:
+        yield
+    finally:
+        restore = orig or 'HEAD'
+        print(f'\n>>> Restoring fhir-omop-ig to: {restore}')
+        subprocess.run(['git', 'checkout', restore], cwd=str(IG_DIR), check=False)
+
 
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='FHIR R5/1.0.0 build pipeline')
     parser.add_argument('steps', nargs='*',
                         help=f'Steps to run (default: {DEFAULT_STEPS}). Choices: {STEPS}')
+    parser.add_argument('--ig-source', metavar='SOURCE',
+                        help='"upstream" (HL7 main) or a branch name. '
+                             'Checks out fhir-omop-ig before the ig step and restores it after. '
+                             'Sets Docker image tag to :upstream or :<branch>. '
+                             'Omit to use the current checkout and tag :latest.')
     return parser.parse_args(argv)
 
 
@@ -60,16 +121,17 @@ def run(cmd, cwd=None, check=True, env=None):
 
 def step_ig():
     print('\n=== Building fhir-omop-ig ===')
-    run([
-        'docker', 'run', '--rm',
-        '-v', f'{IG_DIR}:/workspace',
-        '-w', '/workspace',
-        'ghcr.io/bonfhir/ig-toolbox:latest',
-        'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', 'https://tx.fhir.org',
-    ])
-    print(f'\n>>> cp {PACKAGE_SRC} {PACKAGE_DST}')
-    shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
-    print('IG package copied.')
+    with _ig_source_checkout():
+        run([
+            'docker', 'run', '--rm',
+            '-v', f'{IG_DIR}:/workspace',
+            '-w', '/workspace',
+            'ghcr.io/bonfhir/ig-toolbox:latest',
+            'java', '-jar', 'input-cache/publisher.jar', '-ig', '.', '-tx', 'https://tx.fhir.org',
+        ])
+        print(f'\n>>> cp {PACKAGE_SRC} {PACKAGE_DST}')
+        shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
+        print('IG package copied.')
 
 
 def step_mvn():
@@ -117,19 +179,25 @@ def _strip_package_deps(tgz_path: Path) -> None:
             tf.addfile(member, io.BytesIO(data))
 
 
+def _matchbox_compose_env() -> dict:
+    return {**os.environ, 'MATCHBOX_TAG': _matchbox_tag()}
+
+
 def step_docker():
-    print(f'\n=== Building {MATCHBOX_IMAGE} Docker image ===')
+    print(f'\n=== Building {_matchbox_image()} Docker image ===')
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox'], cwd=MATCHBOX_DIR)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox'],
+        cwd=MATCHBOX_DIR, env=_matchbox_compose_env())
 
 
 def step_release():
-    print('\n=== Building and pushing release images ===')
+    print(f'\n=== Building and pushing release images ({_matchbox_image()}) ===')
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox'], cwd=MATCHBOX_DIR)
-    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push', 'matchbox'], cwd=MATCHBOX_DIR)
+    env = _matchbox_compose_env()
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build', 'matchbox'], cwd=MATCHBOX_DIR, env=env)
+    run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push', 'matchbox'], cwd=MATCHBOX_DIR, env=env)
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'build'], cwd=DQD_DIR)
     run(['docker', 'compose', '-f', 'docker-compose.build.yml', 'push'], cwd=DQD_DIR)
 
@@ -285,13 +353,16 @@ STEP_FNS = {
 
 
 def main():
+    global _IG_SOURCE
     parsed = parse_args()
+    _IG_SOURCE = parsed.ig_source
     steps = parsed.steps or DEFAULT_STEPS
     unknown = [s for s in steps if s not in STEP_FNS]
     if unknown:
         print(f'Unknown steps: {unknown}. Valid: {STEPS}')
         sys.exit(1)
-    print('\n=== Stack: FHIR R5, IG 1.0.0 ===')
+    source_label = f'ig-source={_IG_SOURCE}' if _IG_SOURCE else 'current checkout'
+    print(f'\n=== Stack: FHIR R5, IG 1.0.0 | image: {_matchbox_image()} | {source_label} ===')
     for step in steps:
         STEP_FNS[step]()
     print('\n=== Done ===')
