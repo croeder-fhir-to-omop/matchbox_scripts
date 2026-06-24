@@ -111,6 +111,22 @@ fhir-omop-ig.commit:     1ec215b3f...
 fhir-omop-ig.build-date: 2026-06-23T19:05:00Z
 ```
 
+### build.py steps
+
+Steps run in the order specified with no automatic dependency resolution — if a step depends on the output of a previous step, you must include both explicitly.
+
+| Step | What it does | Assumes |
+|---|---|---|
+| `ig` | Builds the IG package from `fhir-omop-ig/` using the bonfhir publisher container; copies the result into `matchbox_docker/igs/` | `fhir-omop-ig` cloned alongside |
+| `mvn` | Compiles the matchbox JAR from source | `matchbox` cloned alongside |
+| `docker` | Builds the matchbox Docker image | IG package in `matchbox_docker/igs/` (from `ig`); JAR built (from `mvn`) |
+| `restart` | Wipes matchbox and OMOP DuckDB volumes, restarts the stack, then runs `test`; preserves the enchilada vocabulary cache | Stack previously started |
+| `etl` | Re-runs the ETL against all fixtures in the running container; opens reports at http://localhost:8088 | Stack running and matchbox healthy |
+| `test` | Runs the pytest unit test suite against the live matchbox instance | Stack running and matchbox healthy |
+| `release` | Builds and pushes multi-arch images to Docker Hub | `ig` run in the same invocation (warns if not — the IG commit label may not match the baked-in package) |
+| `start` | Starts the stack, waits for matchbox to be healthy, then runs `test` | Images already built |
+| `stop` | Stops the stack | — |
+
 See [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker) for the Dockerfile and compose files used by `build.py`.
 
 ## How the ETL pipeline drives fixtures through StructureMaps
