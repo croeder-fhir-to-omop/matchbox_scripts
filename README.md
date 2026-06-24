@@ -39,6 +39,8 @@ FHIR resource JSON files paired with the transform that processes them:
 | `observation_smoking*.json` | `transform_observation` | `observation` |
 | `medication_aspirin.json` | `transform_medication` | `drug_exposure` |
 
+Several fixtures contain LOINC codes. LOINC content may be used free of charge but the [LOINC license](https://loinc.org/license/) requires that the copyright notice be preserved and that LOINC content not be modified. Review [NOTICES.md](https://github.com/croeder-fhir-to-omop/.github/blob/main/profile/NOTICES.md) before adding or redistributing LOINC-coded fixtures.
+
 ## Running transforms manually
 
 Start matchbox (see [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker)), then call any of the paired shell scripts:
