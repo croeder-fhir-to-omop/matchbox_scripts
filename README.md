@@ -120,7 +120,7 @@ Steps run in the order specified with no automatic dependency resolution — if 
 | `ig` | Builds the IG package from `fhir-omop-ig/` using the bonfhir publisher container; copies the result into `matchbox_docker/igs/` | `fhir-omop-ig` cloned alongside |
 | `mvn` | Compiles the matchbox JAR from source | `matchbox` cloned alongside |
 | `docker` | Builds the matchbox Docker image | IG package in `matchbox_docker/igs/` (from `ig`); JAR built (from `mvn`) |
-| `restart` | Wipes matchbox and OMOP DuckDB volumes, restarts the stack, then runs `test`; preserves the enchilada vocabulary cache | Stack previously started |
+| `restart` | Wipes matchbox and OMOP DuckDB volumes, restarts the stack, then runs the pytest unit test suite; preserves the enchilada vocabulary cache | Stack previously started |
 | `etl` | Re-runs the ETL against all fixtures in the running container; opens reports at http://localhost:8088 | Stack running and matchbox healthy |
 | `test` | Runs the pytest unit test suite against the live matchbox instance | Stack running and matchbox healthy |
 | `release` | Builds and pushes multi-arch images to Docker Hub | `ig` run in the same invocation (warns if not — the IG commit label may not match the baked-in package) |
@@ -168,7 +168,7 @@ To incorporate a new StructureMap (e.g. for Death or Device):
 
 ## Working with the Implementation Guide
 
-The `croeder/matchbox:latest` image has `hl7.fhir.uv.omop#1.0.0` baked in. If you are working on the IG itself — editing StructureMaps or ConceptMaps in `fhir-omop-ig/` — you need to build a new IG package and get it into matchbox. There are two paths depending on whether you want a quick local test or a published image.
+The `croeder/matchbox:latest` image has `hl7.fhir.uv.omop#1.0.0` baked in. If you are working on the IG itself — editing StructureMaps ([FML](https://hl7.org/fhir/mapping-language.html)) or ConceptMaps ([FSH](https://hl7.org/fhir/uv/shorthand/)) in `fhir-omop-ig/` — you need to build a new IG package and get it into matchbox. There are two paths depending on whether you want a quick local test or a published image.
 
 ### Step 1 — Build the IG
 
