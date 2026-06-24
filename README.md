@@ -251,6 +251,42 @@ python3 build.py --ig-source fix-translate-rule-names ig docker release
 
 The build script checks out the requested source in `fhir-omop-ig`, builds the IG and image, then restores the original branch. Anyone who then does `docker compose pull` or runs the curl command fresh gets the updated image.
 
+## Unit tests
+
+`tests/test_r5_fml_transforms.py` is the primary correctness test suite for the StructureMap implementations. Each test calls matchbox's `$transform` endpoint directly with an inline FHIR resource and asserts specific OMOP field values in the result — for example, that a male Patient produces `gender_concept_id = 8507`.
+
+Tests require a running matchbox server. Run via build.py:
+
+```bash
+python3 build.py test
+```
+
+Or directly against a running stack:
+
+```bash
+python3 -m pytest tests/test_r5_fml_transforms.py -v
+```
+
+`MATCHBOX_URL` defaults to `http://localhost:8080`. If the server is unreachable, all tests are skipped rather than failing.
+
+### Adding tests for new or modified StructureMaps
+
+Tests follow BDD naming (`test_WHEN_<condition>_SHOULD_<expected_result>`) and are grouped into classes by StructureMap. To add tests:
+
+1. Define an inline FHIR resource dict at module level (see existing `PATIENT_MALE`, `ENCOUNTER_AMB`, etc. as examples)
+2. Add a test class named after the StructureMap (e.g. `class TestConditionMap`)
+3. Call `transform(resource, 'MapName')` and assert the OMOP fields you care about:
+
+```python
+class TestConditionMap:
+    def test_WHEN_condition_has_snomed_code_SHOULD_map_to_condition_concept_id(self):
+        result = transform(CONDITION_HYPERTENSION, 'ConditionMap')
+        assert result is not None, 'transform returned OperationOutcome'
+        assert result.get('condition_concept_id') == '316866'
+```
+
+Use `_retrying()` when asserting terminology-translated fields (e.g. `condition_concept_id`, `drug_concept_id`) — these can be absent if the terminology server is rate-limited, and retrying avoids false failures.
+
 ## Extending or replacing the conversion engine
 
 ### Replacing matchbox
