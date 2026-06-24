@@ -22,7 +22,7 @@ Part of the [croeder-fhir-to-omop](https://github.com/croeder-fhir-to-omop) FHIR
 | `load_duckdb.py` | Runs all transforms against the sample fixtures and loads results into a DuckDB OMOP CDM 5.4 database; writes an HTML ETL report |
 | `omop_to_csv.py` | Converts a single transform result (JSON) to a CSV row; supports ConditionOccurrence, Person, ProcedureOccurrence, VisitOccurrence, DrugExposure, Measurement, Observation |
 
-## Sample fixtures
+## Sample test fixtures
 
 FHIR resource JSON files paired with the transform that processes them:
 
@@ -140,19 +140,19 @@ See [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker) f
 
 For each row, every fixture file whose name matches the glob is passed to the transform function, which calls matchbox's `$transform` endpoint using the named StructureMap. The result is an OMOP-shaped dict that `load_duckdb.py` inserts into the named OMOP table. There is one transform function per StructureMap — not one per OMOP table, since multiple StructureMaps can target the same table (for example, `MeasurementMap`, `SimpleVitalSignsMap`, `BloodPressurePanelMap`, `BloodPressureSystolicMap`, and `BloodPressureDiastolicMap` all write to `measurement`). A single fixture file can also match multiple rows — blood pressure files are intentionally passed through three separate StructureMaps to produce panel, systolic, and diastolic records.
 
-## Adding FHIR fixtures
+## Adding FHIR test fixtures
 
-Fixtures are FHIR resource JSON files stored in `matchbox_scripts/`. The two built-in sets serve different purposes: `test_files_r5/` contains simple single-resource files for exercising specific StructureMap scenarios; `sample_fixtures_r5/` contains a linked multi-patient set for broader regression coverage. You can add files to either set or bring your own data entirely.
+Test fixtures are FHIR resource JSON files stored in `matchbox_scripts/`. The two built-in sets serve different purposes: `test_files_r5/` contains simple single-resource files for exercising specific StructureMap scenarios; `sample_fixtures_r5/` contains a linked multi-patient set for broader regression coverage. You can add files to either set or bring your own data entirely.
 
 ### Using your own FHIR data
 
-To run the pipeline against your own FHIR resources without modifying the built-in fixture sets, drop your JSON files into `matchbox_scripts/sample_fixtures_r5/` — any file whose name matches an existing glob pattern in `FIXTURE_TRANSFORMS_R5` will be picked up automatically. Name files after the resource type they contain (e.g. `condition_*.json`, `observation_*.json`) to match the existing patterns. The ETL report on port 8088 will include your files alongside the built-in ones.
+To run the pipeline against your own FHIR resources without modifying the built-in test fixture sets, drop your JSON files into `matchbox_scripts/sample_fixtures_r5/` — any file whose name matches an existing glob pattern in `FIXTURE_TRANSFORMS_R5` will be picked up automatically. Name files after the resource type they contain (e.g. `condition_*.json`, `observation_*.json`) to match the existing patterns. The ETL report on port 8088 will include your files alongside the built-in ones.
 
 If you want a completely separate directory, you would need to edit `load_duckdb.py` to point at it — there is no command-line argument for this yet.
 
 ### Existing StructureMaps
 
-Add a JSON file whose name matches an existing glob pattern (e.g. `condition_diabetes.json`, `observation_bp_standing.json`) — no code changes needed. The glob patterns are defined in `FIXTURE_TRANSFORMS` in `load_duckdb.py`.
+Add a JSON test fixture whose name matches an existing glob pattern (e.g. `condition_diabetes.json`, `observation_bp_standing.json`) — no code changes needed. The glob patterns are defined in `FIXTURE_TRANSFORMS` in `load_duckdb.py`.
 
 - **Option B / Jupyter**: Drop the file into `matchbox_scripts/` on your host — it appears immediately inside the container. No restart needed. Commit and push to persist for others.
 - **Option A / automated ETL**: Add the file to `matchbox_scripts/`, then rebuild: `docker compose -f dqd_docker/docker-compose.yml -f dqd_docker/docker-compose.dev.yml up --build`.
