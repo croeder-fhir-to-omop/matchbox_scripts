@@ -69,12 +69,14 @@ _IG_COMMIT: str = ''
 
 
 def _matchbox_tag() -> str:
+    # Docker image tag derived from --ig-source: 'upstream' → 'latest'; any fork branch → that branch name.
     if _IG_SOURCE == 'upstream':
         return 'latest'
     return _IG_SOURCE.replace('/', '-')
 
 
 def _matchbox_image() -> str:
+    # Full Docker image reference, e.g. croeder/matchbox:latest or croeder/matchbox:main.
     return f'croeder/matchbox:{_matchbox_tag()}'
 
 
