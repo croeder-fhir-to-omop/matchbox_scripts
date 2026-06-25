@@ -59,7 +59,8 @@ UNIT_TEST_REPORT = SCRIPTS_DIR / 'unit_test_report.html'
 STEPS = ['ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'etl', 'test']
 DEFAULT_STEPS = ['ig', 'mvn', 'docker', 'restart', 'etl', 'test']
 
-# Set by main() from --ig-source. Default is 'upstream' (HL7/fhir-omop-ig main → :latest).
+# Set by main() from --ig-source. 'upstream' = HL7/fhir-omop-ig main → :latest;
+# 'main' = fork main → :main; any branch name = that fork branch → :<branch>.
 _IG_SOURCE: str = 'upstream'
 
 _TX_SERVER = 'https://tx.fhir.org'
