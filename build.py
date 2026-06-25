@@ -78,6 +78,14 @@ def _matchbox_image() -> str:
     return f'croeder/matchbox:{_matchbox_tag()}'
 
 
+def _dqd_tag() -> str:
+    return _matchbox_tag()
+
+
+def _dqd_image() -> str:
+    return f'croeder/dqd:{_dqd_tag()}'
+
+
 @contextlib.contextmanager
 def _ig_source_checkout():
     """Fetch/checkout the requested IG source in fhir-omop-ig, then restore the original branch."""
@@ -204,6 +212,7 @@ def _matchbox_compose_env() -> dict:
     return {
         **os.environ,
         'MATCHBOX_TAG':    _matchbox_tag(),
+        'DQD_TAG':         _dqd_tag(),
         'IG_SOURCE':       _IG_SOURCE,
         'IG_COMMIT':       commit,
         'IG_BUILD_DATE':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -232,7 +241,7 @@ def _ensure_multiarch_builder():
 
 
 def step_release():
-    print(f'\n=== Building and pushing release images ({_matchbox_image()}) ===')
+    print(f'\n=== Building and pushing release images ({_matchbox_image()}, {_dqd_image()}) ===')
     if not _IG_COMMIT:
         print(
             'WARNING: ig step was not run in this invocation. '
@@ -249,7 +258,7 @@ def step_release():
     run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push', 'matchbox'],
         cwd=MATCHBOX_DIR, env=env)
     run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push'],
-        cwd=DQD_DIR)
+        cwd=DQD_DIR, env=env)
     run(['docker', 'buildx', 'bake', '-f', 'docker-compose.build.yml', '--push'],
         cwd=ENCHILADA_DIR)
 
