@@ -141,7 +141,7 @@ EXPECTED_FAILURES = {
     'procedure_p3_custom_concept_f2o-039.json',
     # no effective date on observation — tests date-required constraint
     'observation_p4_nodate_NEG_f2o-070.json',
-    # identifier leak test: passes with numeric-ID approach — tracked as XPASS
+    # identifier leak test: passes with numeric-ID approach — tracked as UPASS
     'condition_p4_identifier_leak_NEG_f2o-020.json',
     # intentionally missing subject
     'condition_p4_missing_subject_NEG_f2o-012.json',
@@ -155,11 +155,12 @@ EXPECTED_FAILURES = {
 STATUS_COLOR = {
     'OK':         '#2d8a4e',
     'XFAIL':      '#5a7fa8',
-    'XPASS':      '#a0522d',
-    'SUPPRESSED': '#888',
+    'UPASS':      '#a0522d',
+    'NO_OUTPUT': '#888',
     'WARN':       '#c07a00',
     'SKIP':       '#888',
-    'ERROR':      '#c0392b',
+    'EXCEPT':     '#c0392b',
+    'DBERROR':    '#7b0000',
 }
 
 
@@ -351,11 +352,12 @@ def write_report(results, csv_rows=None, title=None):
   <table>
     <tr><td><span class="badge" style="color:#2d8a4e">OK</span></td><td>Transform succeeded; row inserted into OMOP table.</td></tr>
     <tr><td><span class="badge" style="color:#5a7fa8">XFAIL</span></td><td>Expected failure &mdash; transform ran and error was captured, but this fixture is a known-bad negative test. Failures here are intentional.</td></tr>
-    <tr><td><span class="badge" style="color:#a0522d">XPASS</span></td><td>Unexpected pass &mdash; fixture is listed as an expected failure but the transform succeeded and produced a row. Needs review.</td></tr>
+    <tr><td><span class="badge" style="color:#a0522d">UPASS</span></td><td>Unexpected pass &mdash; fixture is listed as an expected failure but the transform succeeded and produced a row. Needs review.</td></tr>
     <tr><td><span class="badge" style="color:#c07a00">WARN</span></td><td>Unexpected failure &mdash; transform ran but produced an error or empty result. Needs investigation.</td></tr>
     <tr><td><span class="badge" style="color:#888">SKIP</span></td><td>Resource structurally incompatible with the current server (e.g. R5 resource sent to R4 matchbox). Transform not attempted.</td></tr>
-    <tr><td><span class="badge" style="color:#888">SUPPRESSED</span></td><td>Transform returned no output (matchbox OperationOutcome or unrecognised resource type). No OMOP row produced.</td></tr>
-    <tr><td><span class="badge" style="color:#c0392b">ERROR</span></td><td>Critical DB error &mdash; typically a primary key or NOT NULL constraint violation. Row not inserted.</td></tr>
+    <tr><td><span class="badge" style="color:#888">NO_OUTPUT</span></td><td>Transform returned no output (matchbox OperationOutcome or unrecognised resource type). No OMOP row produced.</td></tr>
+    <tr><td><span class="badge" style="color:#c0392b">EXCEPT</span></td><td>Unhandled exception during transform &mdash; matchbox or parsing error threw before any DB insert was attempted.</td></tr>
+    <tr><td><span class="badge" style="color:#7b0000">DBERROR</span></td><td>Primary key constraint violation on insert &mdash; row conflicts with an existing record in the OMOP table.</td></tr>
   </table>
 </div>
 <table>
@@ -472,13 +474,13 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=No
                 continue
             except Exception as e:
                 msg = str(e).split('\n')[0]
-                print(f'  ERROR {path.name}: {msg}', file=sys.stderr)
-                status = 'XFAIL' if path.name in EXPECTED_FAILURES else 'ERROR'
+                print(f'  EXCEPT {path.name}: {msg}', file=sys.stderr)
+                status = 'XFAIL' if path.name in EXPECTED_FAILURES else 'EXCEPT'
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': msg, 'codings': codings})
                 continue
             if result is None:
-                print(f'  SUPPRESSED {path.name}')
-                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'SUPPRESSED'})
+                print(f'  NO_OUTPUT {path.name}')
+                results.append({'file': path.name, 'map': map_name, 'table': table, 'status': 'NO_OUTPUT'})
                 continue
             resource_type = result.get('resourceType')
             cols = OMOP_COLUMNS.get(resource_type)
@@ -493,8 +495,8 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=No
             ok, err = insert(con, table, row)
             if ok:
                 if path.name in EXPECTED_FAILURES:
-                    status = 'XPASS'
-                    print(f'  XPASS {path.name} -> {table} (expected to fail but passed)')
+                    status = 'UPASS'
+                    print(f'  UPASS {path.name} -> {table} (expected to fail but passed)')
                 else:
                     status = 'OK'
                     print(f'  OK {path.name} -> {table}')
@@ -504,7 +506,7 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=No
                 if path.name in EXPECTED_FAILURES:
                     status = 'XFAIL'
                 elif err and 'violates primary key constraint' in err:
-                    status = 'ERROR'
+                    status = 'DBERROR'
                 else:
                     status = 'WARN'
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err, 'codings': codings})

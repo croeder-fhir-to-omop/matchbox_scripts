@@ -90,7 +90,7 @@ def _ig_source_checkout():
         ['git', 'diff', '--quiet', 'HEAD'], cwd=str(IG_DIR)
     ).returncode != 0
     if dirty:
-        print('ERROR: fhir-omop-ig has uncommitted changes to tracked files. Stash or commit before using --ig-source.')
+        print('EXCEPT', 'DBERROR: fhir-omop-ig has uncommitted changes to tracked files. Stash or commit before using --ig-source.')
         sys.exit(1)
 
     orig = subprocess.run(
@@ -325,7 +325,7 @@ def step_etl():
 
 
 def _analyze_report(path):
-    STATUSES = {'OK', 'WARN', 'SUPPRESSED', 'SKIP', 'ERROR', 'XFAIL', 'XPASS'}
+    STATUSES = {'OK', 'WARN', 'NO_OUTPUT', 'SKIP', 'EXCEPT', 'DBERROR', 'XFAIL', 'UPASS'}
 
     class _RowParser(HTMLParser):
         def __init__(self):
@@ -361,14 +361,14 @@ def _analyze_report(path):
         if not status:
             continue
         counts[status] = counts.get(status, 0) + 1
-        if status not in ('OK', 'SUPPRESSED', 'XFAIL'):
+        if status not in ('OK', 'NO_OUTPUT', 'XFAIL'):
             fname  = row[0] if row else '?'
             map_nm = row[1] if len(row) > 1 else '?'
             detail = row[-1] if len(row) > 4 else ''
             issues.append((status, fname, map_nm, detail[:120]))
 
     print('\n--- ETL Report Summary ---')
-    for s in ('OK', 'WARN', 'XFAIL', 'XPASS', 'SUPPRESSED', 'SKIP', 'ERROR'):
+    for s in ('OK', 'WARN', 'XFAIL', 'UPASS', 'NO_OUTPUT', 'SKIP', 'EXCEPT', 'DBERROR'):
         if s in counts:
             print(f'  {s}: {counts[s]}')
     if issues:
@@ -376,7 +376,7 @@ def _analyze_report(path):
         for status, fname, map_nm, detail in issues:
             print(f'    [{status}] {fname}  ({map_nm}): {detail}')
     else:
-        print('\n  No issues — all transforms OK or SUPPRESSED.')
+        print('\n  No issues — all transforms OK or NO_OUTPUT.')
     print()
     return counts
 

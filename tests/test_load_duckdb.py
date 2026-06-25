@@ -16,7 +16,7 @@ import load_duckdb
 SAMPLE_RESULTS = [
     {'file': 'patient.json',   'map': 'PersonMap',    'table': 'person',               'status': 'OK'},
     {'file': 'condition.json', 'map': 'ConditionMap', 'table': 'condition_occurrence',  'status': 'OK'},
-    {'file': 'procedure_not_done.json', 'map': 'ProcedureMap', 'table': 'procedure_occurrence', 'status': 'SUPPRESSED'},
+    {'file': 'procedure_not_done.json', 'map': 'ProcedureMap', 'table': 'procedure_occurrence', 'status': 'NO_OUTPUT'},
 ]
 
 SAMPLE_CSV_ROWS = {
@@ -79,9 +79,9 @@ class TestWriteReportCsvSection:
 
     def test_WHEN_row_is_suppressed_SHOULD_not_have_csv_link_for_that_table(self):
         html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
-        # procedure_occurrence is SUPPRESSED — no CSV was written for it
+        # procedure_occurrence is NO_OUTPUT — no CSV was written for it
         assert 'csv/procedure_occurrence.csv' not in html, (
-            'SUPPRESSED rows should not have a CSV link — no data was written'
+            'NO_OUTPUT rows should not have a CSV link — no data was written'
         )
 
     def test_WHEN_csv_rows_is_none_SHOULD_not_crash(self):
