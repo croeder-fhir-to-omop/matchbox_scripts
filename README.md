@@ -88,12 +88,23 @@ python3 omop_to_csv.py condition_fever_output.json
 `build.py` is the build pipeline for the default r5/1.0.0 stack. It manages the full sequence: IG build → matchbox JAR → Docker image → publish.
 
 ```bash
-python3 build.py                      # full pipeline; builds from HL7/fhir-omop-ig upstream/main → croeder/matchbox:latest
-python3 build.py ig docker release    # IG + image + push only
-python3 build.py --ig-source main ig docker release    # fork main → croeder/matchbox:main
-python3 build.py --ig-source <branch> ig docker        # fork branch → croeder/matchbox:<branch>
-python3 build.py --tx-server n/a ig                    # skip terminology validation during IG build
+# Publish croeder/matchbox:latest (upstream HL7 IG)
+python3 build.py ig docker release
+
+# Publish croeder/matchbox:main (fork's main branch)
+python3 build.py --ig-source main ig docker release
+
+# Publish croeder/matchbox:<branch> (any fork branch)
+python3 build.py --ig-source <branch> ig docker release
+
+# Full pipeline including matchbox JAR rebuild (only needed when matchbox Java source changed)
+python3 build.py ig mvn docker release
+
+# Skip terminology validation during IG build
+python3 build.py --tx-server n/a ig docker release
 ```
+
+Always run `docker compose down -v` before switching to a newly published image so matchbox reloads the IG fresh rather than from the cached volume.
 
 Every built image carries labels identifying the IG source and commit:
 
@@ -129,7 +140,7 @@ Steps run in the order specified with no automatic dependency resolution — if 
 | `start` | Starts the stack, waits for matchbox to be healthy, then runs `test` | Images already built |
 | `stop` | Stops the stack | — |
 
-See [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker) for the Dockerfile and compose files used by `build.py`.
+See [matchbox_docker](https://github.com/croeder-fhir-to-omop/matchbox_docker) for the Dockerfile and docker compose files used by `build.py`.
 
 ## How the ETL pipeline drives fixtures through StructureMaps
 
