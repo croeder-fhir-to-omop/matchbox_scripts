@@ -429,6 +429,12 @@ def _analyze_report(path):
 
 
 def step_test():
+    print('\n=== Running unit tests (mock + real-git) ===')
+    rc = run([*PYTEST, 'tests/test_build_commands.py', 'tests/test_build_commands_real.py', '-v'],
+             cwd=SCRIPTS_DIR, check=False)
+    if rc != 0:
+        raise SystemExit(rc)
+
     print('\n=== Running integration tests ===')
     env = os.environ.copy()
     env['MATCHBOX_URL'] = f'http://localhost:{MATCHBOX_PORT}'
