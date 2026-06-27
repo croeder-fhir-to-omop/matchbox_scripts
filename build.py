@@ -442,10 +442,11 @@ def step_test():
         raise SystemExit(rc)
 
 
-def _detect_dirty(path: Path) -> bool:
-    return subprocess.run(
-        ['git', 'diff', '--quiet', 'HEAD'], cwd=str(path), capture_output=True
-    ).returncode != 0
+def _detect_dirty(path: Path, exclude: list = ()) -> bool:
+    cmd = ['git', 'diff', '--quiet', 'HEAD']
+    if exclude:
+        cmd += ['--', '.'] + [f':!{p}' for p in exclude]
+    return subprocess.run(cmd, cwd=str(path), capture_output=True).returncode != 0
 
 
 def _resolve_run(source: str | None, include_test: bool) -> list:
@@ -462,7 +463,7 @@ def _resolve_run(source: str | None, include_test: bool) -> list:
         return ['ig', 'docker', 'restart'] + tail
 
     if source == 'local':
-        ig_dirty      = _detect_dirty(IG_DIR)
+        ig_dirty      = _detect_dirty(IG_DIR, exclude=['FHIR-omop.xml'])
         matchbox_dirty = _detect_dirty(REPO_ROOT / 'matchbox')
         scripts_dirty  = _detect_dirty(SCRIPTS_DIR) or _detect_dirty(DQD_DIR)
 
