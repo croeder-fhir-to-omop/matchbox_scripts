@@ -163,6 +163,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument('--tx-server', metavar='URL', default='https://tx.fhir.org',
                         help='Terminology server URL passed to the IG publisher '
                              '(default: https://tx.fhir.org). Use "n/a" to skip terminology validation.')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Print the resolved steps and configuration without executing anything.')
     return parser.parse_args(argv)
 
 
@@ -529,6 +531,14 @@ def main():
 
     dev_note = ' | dev-overlay=dqd' if _USE_DEV_OVERLAY else ''
     print(f'\n=== Stack: FHIR R5, IG 1.0.0 | image: {_matchbox_image()} | ig-source={_IG_SOURCE}{dev_note} ===')
+
+    if parsed.dry_run:
+        print('DRY RUN — no steps will be executed')
+        print(f'steps: {" ".join(steps)}')
+        print(f'ig-source: {_IG_SOURCE}')
+        print(f'dev-overlay: {_USE_DEV_OVERLAY}')
+        return
+
     for step in steps:
         STEP_FNS[step]()
     print('\n=== Done ===')
