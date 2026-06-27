@@ -32,7 +32,7 @@ def _dirty_side_effect(ig=False, matchbox=False, scripts=False):
         build.SCRIPTS_DIR:              scripts,
         build.DQD_DIR:                  scripts,
     }
-    return lambda p: mapping.get(p, False)
+    return lambda p, *args, **kwargs: mapping.get(p, False)
 
 
 class TestMatchboxTag:
