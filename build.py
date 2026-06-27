@@ -26,6 +26,7 @@ Granular steps (surgical control):
   python3 build.py start                                 # start the stack
   python3 build.py restart                               # wipe and restart the stack (forces IG reload)
   python3 build.py stop                                  # stop the stack
+  python3 build.py down                                  # tear down stack and remove all volumes
   python3 build.py etl                                   # re-run ETL; open reports at localhost
   python3 build.py ig docker restart                     # run specific steps in sequence
 
@@ -70,7 +71,7 @@ ETL_REPORT       = SCRIPTS_DIR / 'etl_report_test.html'
 ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_sample.html'
 UNIT_TEST_REPORT = SCRIPTS_DIR / 'unit_test_report.html'
 
-STEPS = ['ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'etl', 'test']
+STEPS = ['ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'down', 'etl', 'test']
 DEFAULT_STEPS = ['ig', 'mvn', 'docker', 'restart', 'etl', 'test']
 
 # Set by main() from --ig-source or task command source.
@@ -349,6 +350,13 @@ def step_stop():
     run(['docker', 'compose', 'stop'], cwd=DQD_DIR, check=False)
 
 
+def step_down():
+    print('\n=== Tearing down stack and removing all volumes ===')
+    run(['docker', 'compose', 'down'], cwd=DQD_DIR, check=False)
+    for vol in ['dqd_docker_matchbox-db', 'dqd_docker_omop-db', 'dqd_docker_enchilada-db']:
+        run(['docker', 'volume', 'rm', '-f', vol], check=False)
+
+
 def step_etl():
     print('\n=== Re-running ETL in dqd container ===')
     runs = [
@@ -510,6 +518,7 @@ STEP_FNS = {
     'start':   step_start,
     'restart': step_restart,
     'stop':    step_stop,
+    'down':    step_down,
     'etl':     step_etl,
     'test':    step_test,
 }
