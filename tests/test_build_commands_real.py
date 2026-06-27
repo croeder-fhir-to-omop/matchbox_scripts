@@ -61,18 +61,18 @@ def _git_restore(path, cwd):
 
 @pytest.fixture()
 def dirty_ig():
-    """Append a comment to a tracked fhir-omop-ig file; restore on teardown."""
-    path = IG_DIR / 'input' / 'maps' / 'ConditionMap.fml'
-    path.write_text(path.read_text() + '\n// real-test marker\n')
+    """Write to the fhir-omop-ig sentinel file; restore on teardown."""
+    path = IG_DIR / '.test-sentinel'
+    path.write_text(path.read_text() + 'x')
     yield path
     _git_restore(path, IG_DIR)
 
 
 @pytest.fixture()
 def dirty_matchbox():
-    """Append a comment to a tracked matchbox file; restore on teardown."""
-    path = MATCHBOX_DIR / 'jmeter' / 'user.properties'
-    path.write_text(path.read_text() + '\n# real-test marker\n')
+    """Write to the matchbox sentinel file; restore on teardown."""
+    path = MATCHBOX_DIR / '.test-sentinel'
+    path.write_text(path.read_text() + 'x')
     yield path
     _git_restore(path, MATCHBOX_DIR)
 
