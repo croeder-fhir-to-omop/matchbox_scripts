@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import build
-from build import _matchbox_tag, _resolve_run, _dqd_compose_up
+from build import _matchbox_tag, _resolve_run, _dqd_compose_up, _matchbox_image_is_current
 
 
 @pytest.fixture(autouse=True)
@@ -53,6 +53,36 @@ class TestMatchboxTag:
         assert _matchbox_tag() == 'refactor-foo'
 
 
+class TestMatchboxImageIsCurrent:
+    def _mock_subprocess(self, image_commit='', branch_commit='', image_rc=0):
+        def fake_run(cmd, **kwargs):
+            m = MagicMock()
+            if 'docker' in cmd:
+                m.returncode = image_rc
+                m.stdout = image_commit + '\n'
+            else:
+                m.returncode = 0
+                m.stdout = branch_commit + '\n'
+            return m
+        return fake_run
+
+    def test_WHEN_image_commit_matches_branch_head_SHOULD_return_true(self):
+        with patch('build.subprocess.run', side_effect=self._mock_subprocess('abc123', 'abc123')):
+            assert _matchbox_image_is_current('my-branch') is True
+
+    def test_WHEN_image_commit_differs_from_branch_head_SHOULD_return_false(self):
+        with patch('build.subprocess.run', side_effect=self._mock_subprocess('abc123', 'def456')):
+            assert _matchbox_image_is_current('my-branch') is False
+
+    def test_WHEN_image_not_found_locally_SHOULD_return_false(self):
+        with patch('build.subprocess.run', side_effect=self._mock_subprocess(image_rc=1)):
+            assert _matchbox_image_is_current('my-branch') is False
+
+    def test_WHEN_image_has_no_commit_label_SHOULD_return_false(self):
+        with patch('build.subprocess.run', side_effect=self._mock_subprocess('', 'abc123')):
+            assert _matchbox_image_is_current('my-branch') is False
+
+
 class TestResolveRunNonLocal:
     def test_WHEN_source_none_no_test_SHOULD_return_restart_etl(self):
         steps = _resolve_run(None, False)
@@ -73,13 +103,27 @@ class TestResolveRunNonLocal:
         steps = _resolve_run('upstream', True)
         assert steps == ['ig', 'docker', 'restart', 'etl', 'test']
 
-    def test_WHEN_source_branch_no_test_SHOULD_set_ig_source_and_return_ig_docker_restart_etl(self):
-        steps = _resolve_run('my-branch', False)
+    def test_WHEN_source_branch_image_stale_SHOULD_return_ig_docker_restart_etl(self):
+        with patch('build._matchbox_image_is_current', return_value=False):
+            steps = _resolve_run('my-branch', False)
         assert steps == ['ig', 'docker', 'restart', 'etl']
         assert build._IG_SOURCE == 'my-branch'
 
-    def test_WHEN_source_branch_with_test_SHOULD_append_test_step(self):
-        steps = _resolve_run('my-branch', True)
+    def test_WHEN_source_branch_image_current_SHOULD_skip_ig_and_docker(self):
+        with patch('build._matchbox_image_is_current', return_value=True):
+            steps = _resolve_run('my-branch', False)
+        assert steps == ['restart', 'etl']
+        assert build._IG_SOURCE == 'my-branch'
+
+    def test_WHEN_source_branch_image_current_with_test_SHOULD_append_test_step(self):
+        with patch('build._matchbox_image_is_current', return_value=True):
+            steps = _resolve_run('my-branch', True)
+        assert steps == ['restart', 'etl', 'test']
+        assert build._IG_SOURCE == 'my-branch'
+
+    def test_WHEN_source_branch_image_stale_with_test_SHOULD_include_ig_docker_and_test(self):
+        with patch('build._matchbox_image_is_current', return_value=False):
+            steps = _resolve_run('my-branch', True)
         assert steps == ['ig', 'docker', 'restart', 'etl', 'test']
         assert build._IG_SOURCE == 'my-branch'
 

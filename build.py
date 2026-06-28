@@ -482,6 +482,30 @@ def _detect_dirty(path: Path, exclude: list = ()) -> bool:
     return subprocess.run(cmd, cwd=str(path), capture_output=True).returncode != 0
 
 
+def _matchbox_image_is_current(source: str) -> bool:
+    """Return True if the local matchbox image for source was built from the current fhir-omop-ig HEAD.
+
+    Checks the fhir-omop-ig.commit label baked into the image against the local branch HEAD.
+    Returns False if the image doesn't exist locally, has no label, or the branch HEAD differs.
+    Not used for 'upstream' (requires a fetch to verify accurately).
+    """
+    image = f'croeder/matchbox:{source.replace("/", "-")}'
+    inspect = subprocess.run(
+        ['docker', 'inspect', '--format', '{{index .Config.Labels "fhir-omop-ig.commit"}}', image],
+        capture_output=True, text=True,
+    )
+    if inspect.returncode != 0 or not inspect.stdout.strip():
+        return False
+    image_commit = inspect.stdout.strip()
+
+    branch_commit = subprocess.run(
+        ['git', 'rev-parse', source],
+        capture_output=True, text=True, cwd=str(IG_DIR),
+    ).stdout.strip()
+
+    return bool(branch_commit) and image_commit == branch_commit
+
+
 def _resolve_run(source: str | None, include_test: bool) -> list:
     """Translate a task command + source into a step list, setting module-level flags as needed."""
     global _IG_SOURCE, _USE_DEV_OVERLAY
@@ -524,8 +548,11 @@ def _resolve_run(source: str | None, include_test: bool) -> list:
 
         return steps + ['restart'] + tail
 
-    # branch name
+    # branch name — check if the local matchbox image already matches
     _IG_SOURCE = source
+    if _matchbox_image_is_current(source):
+        print(f'\n>>> matchbox image croeder/matchbox:{source} already at current fhir-omop-ig HEAD — skipping ig and docker')
+        return ['restart'] + tail
     return ['ig', 'docker', 'restart'] + tail
 
 
