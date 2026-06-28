@@ -541,6 +541,21 @@ def main():
         steps = _resolve_run(source, include_test=(command == 'test'))
     else:
         steps = raw or DEFAULT_STEPS
+        # Detect accidental mixing of task commands with granular steps.
+        task_cmds = [s for s in steps if s in ('run', 'test')]
+        if task_cmds:
+            print(
+                f'ERROR: "{" ".join(raw)}" mixes task commands ({", ".join(task_cmds)}) with granular steps.\n'
+                f'\n'
+                f'Task commands (run/test) and granular steps are two separate modes — you cannot combine them.\n'
+                f'\n'
+                f'  Task command:    python3 build.py run IDs_and_everything\n'
+                f'                   (automatically resolves to ig, docker, restart, etl)\n'
+                f'\n'
+                f'  Granular steps:  python3 build.py ig docker restart etl --ig-source IDs_and_everything\n'
+                f'                   (explicit steps; use --ig-source to set the IG branch)'
+            )
+            sys.exit(1)
         unknown = [s for s in steps if s not in STEP_FNS]
         if unknown:
             print(f'Unknown steps: {unknown}. Valid: {STEPS}')
