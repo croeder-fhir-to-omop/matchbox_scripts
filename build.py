@@ -30,11 +30,11 @@ Granular steps (surgical control):
   python3 build.py etl                                   # re-run ETL; open reports at localhost
   python3 build.py ig docker restart                     # run specific steps in sequence
 
-  python3 build.py --ig-source main ig docker release    # fork main → croeder/matchbox:main
-  python3 build.py --ig-source fix-translate-rule-names ig docker  # fork branch → croeder/matchbox:fix-translate-rule-names
+  python3 build.py --ig-source-branch main ig docker release    # fork main → croeder/matchbox:main
+  python3 build.py --ig-source-branch fix-translate-rule-names ig docker  # fork branch → croeder/matchbox:fix-translate-rule-names
   python3 build.py --tx-server n/a ig                   # skip terminology validation
 
---ig-source values:
+--ig-source-branch values:
   (omitted)       HL7/fhir-omop-ig upstream/main — the release source; image tagged :latest
   main            croeder-fhir-to-omop/fhir-omop-ig main; image tagged :main
   <branch>        croeder-fhir-to-omop/fhir-omop-ig branch <branch>; image tagged :<branch>
@@ -74,7 +74,7 @@ UNIT_TEST_REPORT = SCRIPTS_DIR / 'unit_test_report.html'
 STEPS = ['ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'down', 'etl', 'test']
 DEFAULT_STEPS = ['ig', 'mvn', 'docker', 'restart', 'etl', 'test']
 
-# Set by main() from --ig-source or task command source.
+# Set by main() from --ig-source-branch or task command source.
 # 'upstream' = HL7/fhir-omop-ig main → :latest; 'local' = working tree as-is → :local;
 # 'main' = fork main → :main; any branch name = that fork branch → :<branch>.
 _IG_SOURCE: str = 'upstream'
@@ -174,8 +174,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='FHIR R5/1.0.0 build pipeline')
     parser.add_argument('steps', nargs='*',
                         help=f'Steps to run (default: {DEFAULT_STEPS}). Choices: {STEPS}')
-    parser.add_argument('--ig-source', metavar='SOURCE', default='upstream',
-                        help='IG source for the build. Default: "upstream" (HL7/fhir-omop-ig main → :latest). '
+    parser.add_argument('--ig-source-branch', metavar='BRANCH', default='upstream',
+                        help='fhir-omop-ig branch for the build. Default: "upstream" (HL7/fhir-omop-ig main → :latest). '
                              '"main" builds from croeder-fhir-to-omop/fhir-omop-ig main → :main. '
                              'Any other value is treated as a branch name in the fork → :<branch>. '
                              'Checks out fhir-omop-ig before the ig step and restores it after.')
@@ -573,7 +573,7 @@ STEP_FNS = {
 def main():
     global _IG_SOURCE, _TX_SERVER
     parsed = parse_args()
-    _IG_SOURCE = parsed.ig_source
+    _IG_SOURCE = parsed.ig_source_branch
     _TX_SERVER = parsed.tx_server
     raw = parsed.steps
 
@@ -597,8 +597,8 @@ def main():
                 f'  Task command:    python3 build.py run IDs_and_everything\n'
                 f'                   (automatically resolves to ig, docker, restart, etl)\n'
                 f'\n'
-                f'  Granular steps:  python3 build.py ig docker restart etl --ig-source IDs_and_everything\n'
-                f'                   (explicit steps; use --ig-source to set the IG branch)'
+                f'  Granular steps:  python3 build.py ig docker restart etl --ig-source-branch IDs_and_everything\n'
+                f'                   (explicit steps; use --ig-source-branch to set the IG branch)'
             )
             sys.exit(1)
         unknown = [s for s in steps if s not in STEP_FNS]
@@ -607,12 +607,12 @@ def main():
             sys.exit(1)
 
     dev_note = ' | dev-overlay=dqd' if _USE_DEV_OVERLAY else ''
-    print(f'\n=== Stack: FHIR R5, IG 1.0.0 | image: {_matchbox_image()} | ig-source={_IG_SOURCE}{dev_note} ===')
+    print(f'\n=== Stack: FHIR R5, IG 1.0.0 | image: {_matchbox_image()} | ig-source-branch={_IG_SOURCE}{dev_note} ===')
 
     if parsed.dry_run:
         print('DRY RUN — no steps will be executed')
         print(f'steps: {" ".join(steps)}')
-        print(f'ig-source: {_IG_SOURCE}')
+        print(f'ig-source-branch: {_IG_SOURCE}')
         print(f'dev-overlay: {_USE_DEV_OVERLAY}')
         return
 

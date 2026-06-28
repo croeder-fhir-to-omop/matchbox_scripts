@@ -44,8 +44,8 @@ def _run_dry(*args):
     for line in result.stdout.splitlines():
         if line.startswith('steps: '):
             parsed['steps'] = line[len('steps: '):].split()
-        elif line.startswith('ig-source: '):
-            parsed['ig_source'] = line[len('ig-source: '):]
+        elif line.startswith('ig-source-branch: '):
+            parsed['ig_source'] = line[len('ig-source-branch: '):]
         elif line.startswith('dev-overlay: '):
             parsed['dev_overlay'] = line[len('dev-overlay: '):] == 'True'
     return parsed
