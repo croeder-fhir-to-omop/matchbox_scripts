@@ -139,6 +139,11 @@ class TestResolveRunLocal:
         assert steps == ['restart', 'etl', 'test']
 
 
+def _env_from_compose_up_call(mock_run):
+    """Extract the env kwarg from the most recent call to build.run."""
+    return mock_run.call_args[1].get('env', {})
+
+
 class TestDqdComposeUp:
     def test_WHEN_no_overlay_no_build_SHOULD_run_plain_compose_up(self):
         build._USE_DEV_OVERLAY = False
@@ -171,6 +176,30 @@ class TestDqdComposeUp:
         assert 'docker-compose.dev.yml' in cmd
         assert '--build' in cmd
         assert cmd[-1] == '-d'
+
+    def test_WHEN_ig_source_upstream_SHOULD_pass_latest_matchbox_image_in_env(self):
+        build._IG_SOURCE = 'upstream'
+        build._USE_DEV_OVERLAY = False
+        with patch('build.run') as mock_run:
+            _dqd_compose_up()
+        env = _env_from_compose_up_call(mock_run)
+        assert env.get('MATCHBOX_IMAGE') == 'croeder/matchbox:latest'
+
+    def test_WHEN_ig_source_branch_SHOULD_pass_branch_matchbox_image_in_env(self):
+        build._IG_SOURCE = 'IDs_and_everything'
+        build._USE_DEV_OVERLAY = False
+        with patch('build.run') as mock_run:
+            _dqd_compose_up()
+        env = _env_from_compose_up_call(mock_run)
+        assert env.get('MATCHBOX_IMAGE') == 'croeder/matchbox:IDs_and_everything'
+
+    def test_WHEN_ig_source_local_SHOULD_pass_local_matchbox_image_in_env(self):
+        build._IG_SOURCE = 'local'
+        build._USE_DEV_OVERLAY = True
+        with patch('build.run') as mock_run:
+            _dqd_compose_up()
+        env = _env_from_compose_up_call(mock_run)
+        assert env.get('MATCHBOX_IMAGE') == 'croeder/matchbox:local'
 
 
 class TestMainRouting:

@@ -242,10 +242,11 @@ def _matchbox_compose_env() -> dict:
     ).stdout.strip()
     return {
         **os.environ,
-        'MATCHBOX_TAG':    _matchbox_tag(),
-        'IG_SOURCE':       _IG_SOURCE,
-        'IG_COMMIT':       commit,
-        'IG_BUILD_DATE':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'MATCHBOX_TAG':   _matchbox_tag(),
+        'MATCHBOX_IMAGE': _matchbox_image(),
+        'IG_SOURCE':      _IG_SOURCE,
+        'IG_COMMIT':      commit,
+        'IG_BUILD_DATE':  datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
     }
 
 
@@ -302,7 +303,7 @@ def _dqd_compose_up(build=False, check=True):
         cmd += ['up', '--build', '-d']
     else:
         cmd += ['up', '-d']
-    run(cmd, cwd=DQD_DIR, check=check)
+    run(cmd, cwd=DQD_DIR, check=check, env=_matchbox_compose_env())
 
 
 def step_start():
