@@ -8,5 +8,7 @@ __pycache__/
 *.pyc
 etl_report.html
 etl_report_samples.html
+etl_report_sample.html
+etl_report_test.html
 etl_index.html
 unit_test_report.html
