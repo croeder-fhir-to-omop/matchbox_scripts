@@ -396,7 +396,11 @@ def step_test():
     print('\n=== Running integration tests ===')
     env = os.environ.copy()
     env['MATCHBOX_URL'] = _matchbox_base_url()
-    rc = run([*PYTEST, 'tests/test_r5_fml_transforms.py', '-v',
+    test_file = f'tests/test_{_FHIR_VERSION}_fml_transforms.py'
+    if not (SCRIPTS_DIR / test_file).exists():
+        print(f'No FML transform test suite for FHIR {_FHIR_VERSION} yet ({test_file} does not exist) -- skipping.')
+        return
+    rc = run([*PYTEST, test_file, '-v',
               f'--html={UNIT_TEST_REPORT}', '--self-contained-html'],
              cwd=SCRIPTS_DIR, env=env, check=False)
     if UNIT_TEST_REPORT.exists():
