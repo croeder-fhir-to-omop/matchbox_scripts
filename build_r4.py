@@ -146,13 +146,30 @@ def step_enchilada():
     run(['docker', 'compose', '-f', DQD_COMPOSE_FILE, 'build', 'enchilada'], cwd=DQD_DIR)
 
 
+def _ensure_multiarch_builder():
+    """Ensure a buildx builder with docker-container driver exists for multi-arch builds."""
+    result = subprocess.run(['docker', 'buildx', 'ls'], capture_output=True, text=True)
+    if 'multiarch' not in result.stdout:
+        print('\n>>> Creating multi-arch buildx builder (docker-container driver)')
+        subprocess.run(
+            ['docker', 'buildx', 'create', '--name', 'multiarch',
+             '--driver', 'docker-container', '--bootstrap'],
+            check=True,
+        )
+    subprocess.run(['docker', 'buildx', 'use', 'multiarch'], check=True)
+
+
 def step_release():
     print(f'\n=== Building and pushing release image ({MATCHBOX_IMAGE}) ===')
     for pkg in (MATCHBOX_DIR / 'igs').glob('*.tgz'):
         _strip_package_deps(pkg)
-    run(['docker', 'compose', '-f', 'docker-compose.build.profiles.yml', 'build', 'matchbox-r4-1.0.0'],
-        cwd=MATCHBOX_DIR)
-    run(['docker', 'compose', '-f', 'docker-compose.build.profiles.yml', 'push', 'matchbox-r4-1.0.0'],
+    _ensure_multiarch_builder()
+    # Multi-platform images (linux/amd64 + linux/arm64) can only be assembled into a
+    # correct manifest list via a single combined build+push -- a plain `docker compose
+    # build` followed by a separate `push` cannot join the two platform variants into
+    # one manifest.
+    run(['docker', 'buildx', 'bake', '--allow=fs.read=../matchbox/matchbox-server',
+         '-f', 'docker-compose.build.profiles.yml', '--push', 'matchbox-r4-1.0.0'],
         cwd=MATCHBOX_DIR)
 
 
@@ -281,9 +298,17 @@ def _analyze_report(path):
 
 
 def step_test():
-    print('\n=== No R4 FML transform test suite exists yet ===')
-    print('See matchbox_scripts#8 (Create test_r4_fml_transforms.py with R4 fixtures and maps).')
-    print(f'Once it exists, run it directly with MATCHBOX_URL=http://localhost:{MATCHBOX_PORT}.')
+    print('\n=== Running integration tests ===')
+    env = os.environ.copy()
+    env['MATCHBOX_URL'] = f'http://localhost:{MATCHBOX_PORT}'
+    rc = run([*PYTEST, 'tests/test_r4_fml_transforms.py', '-v',
+              f'--html={UNIT_TEST_REPORT}', '--self-contained-html'],
+             cwd=SCRIPTS_DIR, env=env, check=False)
+    if UNIT_TEST_REPORT.exists():
+        subprocess.run(['docker', 'cp', str(UNIT_TEST_REPORT),
+                        f'{DQD_CONTAINER}:/omop/unit_test_report.html'], check=False)
+    if rc != 0:
+        raise SystemExit(rc)
 
 
 STEP_FNS = {
