@@ -18,6 +18,16 @@ Granular steps:
 The ig step explicitly checks out fhir-omop-ig main (this fork's main branch,
 in its current state) before building, and restores the original branch/checkout
 afterward — rather than depending on whatever happened to already be checked out.
+
+IMPORTANT: never swap MATCHBOX_IMAGE or rebuild-and-restart with raw
+`docker compose` commands. matchbox caches the loaded IG in the persistent
+matchbox-r4-1.0.0-db volume, so recreating just the matchbox container
+(e.g. `--force-recreate`) keeps serving the OLD cached IG even after a new
+image is pulled/built. Always go through `restart` — it wipes
+matchbox-r4-1.0.0-db + omop-r4-1.0.0-db and explicitly preserves
+enchilada-db (the vocabulary cache, several minutes to rebuild). If you
+ever do need a raw `docker compose down -v`, only enchilada-db is
+expensive to lose — never wipe it without a specific reason.
 """
 
 import contextlib

@@ -2,6 +2,16 @@
 """
 Simple FHIR R5 / IG 1.0.0 build pipeline.
 
+IMPORTANT: never swap MATCHBOX_IMAGE or rebuild-and-restart with raw
+`docker compose` commands. matchbox caches the loaded IG in the persistent
+matchbox-db volume, so recreating just the matchbox container (e.g.
+`--force-recreate`) keeps serving the OLD cached IG even after a new image
+is pulled/built. Always go through `restart` (or the `run`/`test` task
+commands, which call it) — it wipes matchbox-db + omop-db and explicitly
+preserves enchilada-db (the vocabulary cache, several minutes to rebuild).
+If you ever do need a raw `docker compose down -v`, only enchilada-db is
+expensive to lose — never wipe it without a specific reason.
+
 Task commands (preferred):
   python3 build.py run                # restart stack, run ETL with current images
   python3 build.py run upstream       # rebuild from HL7 upstream main, restart, ETL

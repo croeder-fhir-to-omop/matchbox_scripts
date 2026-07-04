@@ -2,6 +2,16 @@
 """
 Build pipeline: IG → matchbox JAR → Docker images → restart → tests → release.
 
+IMPORTANT: never swap a matchbox image or rebuild-and-restart with raw
+`docker compose` commands. matchbox caches the loaded IG in the persistent
+matchbox-{profile}-db volume, so recreating just the matchbox container
+(e.g. `--force-recreate`) keeps serving the OLD cached IG even after a new
+image is pulled/built. Always go through `restart` — it wipes
+matchbox-{profile}-db + omop-{profile}-db and explicitly preserves
+enchilada-db (the vocabulary cache, several minutes to rebuild). If you
+ever do need a raw `docker compose down -v`, only enchilada-db is
+expensive to lose — never wipe it without a specific reason.
+
 Two independent dimensions:
   --fhir-version r4|r5      FHIR protocol version (default: r4)
   --ig-version 1.0.0|1.0.1  IG package version   (default: 1.0.1)
