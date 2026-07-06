@@ -1,4 +1,6 @@
 
+Project-wide rules for all croeder-fhir-to-omop repos: @../.github/CLAUDE.md
+
 ## Build & Deploy
 
 `python3 build.py [steps]` — simple r5/1.0.0 pipeline. No flags needed.
