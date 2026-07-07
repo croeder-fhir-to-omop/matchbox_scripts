@@ -60,6 +60,7 @@ def _dqd_container() -> str:
 
 def _matchbox_image() -> str:
     return {
+        ('r4', '1.0.0'): 'croeder/matchbox:r4-1.0.0',
         ('r4', '1.0.1'): 'croeder/matchbox:r4',
         ('r5', '1.0.1'): 'croeder/matchbox:r5',
         ('r5', '1.0.0'): 'croeder/matchbox:r5-1.0.0',
@@ -68,6 +69,7 @@ def _matchbox_image() -> str:
 
 def _matchbox_port() -> int:
     return {
+        ('r4', '1.0.0'): 8080,
         ('r4', '1.0.1'): 8080,
         ('r5', '1.0.1'): 8082,
         ('r5', '1.0.0'): 8083,
@@ -90,6 +92,7 @@ _IG_VERSION   = '1.0.1'
 def _docker_profile() -> str:
     """Compose profile for the current (fhir_version, ig_version) stack."""
     return {
+        ('r4', '1.0.0'): 'r4-1.0.0',
         ('r4', '1.0.1'): 'r4-1.0.1',
         ('r5', '1.0.1'): 'r5-1.0.1',
         ('r5', '1.0.0'): 'r5-1.0.0',
@@ -99,6 +102,7 @@ def _docker_profile() -> str:
 def _dqd_svc() -> str:
     """docker-compose service name for the DQD container in the current stack."""
     return {
+        ('r4', '1.0.0'): 'dqd-r4-1.0.0',
         ('r4', '1.0.1'): 'dqd-r4-1.0.1',
         ('r5', '1.0.1'): 'dqd-r5-1.0.1',
         ('r5', '1.0.0'): 'dqd-r5-1.0.0',
@@ -106,17 +110,23 @@ def _dqd_svc() -> str:
 
 
 def _dqd_http_port() -> int:
-    """Host port for the DQD container's static HTTP server (serves /omop)."""
+    """Host port for the DQD container's static HTTP server (serves /omop).
+
+    All stacks publish the report on 8088 — only one stack runs at a time, so
+    they share the host port rather than each claiming a distinct one.
+    """
     return {
+        ('r4', '1.0.0'): 8088,
         ('r4', '1.0.1'): 8088,
-        ('r5', '1.0.1'): 8089,
-        ('r5', '1.0.0'): 8090,
+        ('r5', '1.0.1'): 8088,
+        ('r5', '1.0.0'): 8088,
     }[(_FHIR_VERSION, _IG_VERSION)]
 
 
 def _dqd_shiny_port() -> int:
     """Host port for the DQD Shiny dashboard."""
     return {
+        ('r4', '1.0.0'): 3838,
         ('r4', '1.0.1'): 3838,
         ('r5', '1.0.1'): 3839,
         ('r5', '1.0.0'): 3840,

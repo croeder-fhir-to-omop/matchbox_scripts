@@ -345,6 +345,9 @@ def write_report(results, csv_rows=None, title=None):
   <strong>CSV column note:</strong>
   The CSV file linked on each row contains <em>all rows</em> for that OMOP domain table
   across the entire fixture run — not just the row produced by the fixture on that line.
+  The <code>_insert_status</code> column marks whether each row was inserted (<code>OK</code>/<code>UPASS</code>)
+  or failed to insert (<code>WARN</code>/<code>DBERROR</code>/<code>XFAIL</code>); failed rows are the transform output
+  that did not land in the database.
 </div>
 <div class="summary">{summary}</div>
 <div class="legend">
@@ -501,6 +504,7 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=No
                     status = 'OK'
                     print(f'  OK {path.name} -> {table}')
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status})
+                row['_insert_status'] = status
                 csv_rows.setdefault(table, []).append(row)
             else:
                 if path.name in EXPECTED_FAILURES:
@@ -510,6 +514,8 @@ def _load_fixture_dir(con, fixture_dir, results, csv_rows, fixture_transforms=No
                 else:
                     status = 'WARN'
                 results.append({'file': path.name, 'map': map_name, 'table': table, 'status': status, 'detail': err, 'codings': codings})
+                row['_insert_status'] = status
+                csv_rows.setdefault(table, []).append(row)
 
     for path in sorted(fixture_dir.glob('*.json')):
         if path.name in processed:

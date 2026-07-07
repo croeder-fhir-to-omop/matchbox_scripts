@@ -3,6 +3,7 @@ Unit tests for load_duckdb.py report generation.
 
 Does not require a running matchbox server or DuckDB file.
 """
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -108,6 +109,53 @@ class TestWriteReportCsvSection:
         html = _call_write_report(SAMPLE_RESULTS, SAMPLE_CSV_ROWS)
         assert 'csv/person.csv' in html, (
             'Download link should still point to csv/person.csv'
+        )
+
+
+class TestFailedInsertCsvCapture:
+    """Rows whose transform produced output but whose DB insert failed should
+    still be captured for the CSV, tagged with their insert status, so the
+    report link and file appear even for tables with only failed rows."""
+
+    def _run(self, insert_return):
+        """Drive _load_fixture_dir with one Person fixture and a stubbed insert;
+        return the csv_rows dict it accumulates."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_dir = Path(tmpdir)
+            (fixture_dir / 'patient1.json').write_text(
+                json.dumps({'resourceType': 'Patient', 'id': 'p1'})
+            )
+            transforms = [(
+                'patient*.json',
+                lambda r: {'resourceType': 'Person', 'person_id': 1,
+                           'gender_concept_id': 8507},
+                'person',
+                'PersonMap',
+            )]
+            results, csv_rows = [], {}
+            con = MagicMock()
+            with patch.object(load_duckdb, 'insert', return_value=insert_return):
+                load_duckdb._load_fixture_dir(
+                    con, fixture_dir, results, csv_rows, transforms
+                )
+            return csv_rows
+
+    def test_LoadFixtureDir_WHEN_insert_fails_SHOULD_capture_row_in_csv_rows(self):
+        csv_rows = self._run((False, 'violates primary key constraint'))
+        assert csv_rows.get('person'), (
+            'Insert-failed row should still be captured so its CSV/link appear'
+        )
+
+    def test_LoadFixtureDir_WHEN_insert_fails_SHOULD_tag_row_with_dberror_status(self):
+        csv_rows = self._run((False, 'violates primary key constraint'))
+        assert csv_rows['person'][0].get('_insert_status') == 'DBERROR', (
+            'Failed row should carry its insert status in the CSV'
+        )
+
+    def test_LoadFixtureDir_WHEN_insert_succeeds_SHOULD_tag_row_with_ok_status(self):
+        csv_rows = self._run((True, None))
+        assert csv_rows['person'][0].get('_insert_status') == 'OK', (
+            'OK rows must also carry _insert_status so the column is uniform'
         )
 
 
