@@ -1,0 +1,56 @@
+{
+  "resourceType": "Patient",
+  "id": "race-unmapped-p4",
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
+      "extension": [
+        {
+          "url": "ombCategory",
+          "valueCoding": {
+            "system": "urn:oid:2.16.840.1.113883.6.238",
+            "code": "9999-9",
+            "display": "Local uncoded race value"
+          }
+        },
+        {
+          "url": "text",
+          "valueString": "Local uncoded race value"
+        }
+      ]
+    },
+    {
+      "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
+      "extension": [
+        {
+          "url": "ombCategory",
+          "valueCoding": {
+            "system": "urn:oid:2.16.840.1.113883.6.238",
+            "code": "2186-5",
+            "display": "Not Hispanic or Latino"
+          }
+        },
+        {
+          "url": "text",
+          "valueString": "Not Hispanic or Latino"
+        }
+      ]
+    }
+  ],
+  "identifier": [
+    {
+      "system": "http://example.org/mrn",
+      "value": "race-unmapped-p4"
+    }
+  ],
+  "name": [
+    {
+      "family": "Test",
+      "given": [
+        "race-unmapped-p4"
+      ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1979-06-11"
+}
