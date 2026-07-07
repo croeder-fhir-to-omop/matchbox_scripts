@@ -5,6 +5,9 @@
   "subject": {
     "reference": "Patient/2"
   },
+  "encounter": {
+    "reference": "Encounter/3"
+  },
   "informationSource": {
     "reference": "Patient/2"
   },
@@ -19,8 +22,5 @@
         }
       ]
     }
-  },
-  "encounter": {
-    "reference": "Encounter/3"
   }
 }
