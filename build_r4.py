@@ -52,6 +52,9 @@ PYTEST        = [SCRIPTS_DIR / 'env' / 'bin' / 'python3', '-m', 'pytest']
 ETL_REPORT         = SCRIPTS_DIR / 'etl_report_test.html'
 ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_sample.html'
 UNIT_TEST_REPORT   = SCRIPTS_DIR / 'unit_test_report.html'
+# Release-conformance report is stack-agnostic (same R5 maps + fixtures, IG 1.0.0);
+# reuse build.py's generator rather than duplicating it.
+from build import _generate_release_report, RELEASE_REPORT
 
 MATCHBOX_IMAGE   = 'croeder/matchbox:r4-1.0.0'
 MATCHBOX_TAG     = 'r4-1.0.0'
@@ -150,6 +153,9 @@ def step_ig():
         import shutil
         shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
         print('IG package copied.')
+        # Generate the release-conformance report against the just-built maps/SDs.
+        # Copied into the served /omop dir later, in step_etl (restart wipes omop-db).
+        _generate_release_report()
 
 
 def step_mvn():
@@ -302,6 +308,12 @@ def step_etl():
         run(['docker', 'exec', DQD_CONTAINER, 'cp', tmp_report, '/omop/' + local_report.name])
         print(f'\n--- Report: {local_report.name} ---')
         _analyze_report(local_report)
+    # Serve the release-conformance report (generated in step_ig) alongside the ETL
+    # reports. Copied here because restart wipes omop-db after step_ig ran.
+    if RELEASE_REPORT.exists():
+        subprocess.run(['docker', 'cp', str(RELEASE_REPORT),
+                        f'{DQD_CONTAINER}:/omop/{RELEASE_REPORT.name}'], check=False)
+        print(f'--- Served: {RELEASE_REPORT.name} ---')
     if platform.system() == 'Darwin':
         subprocess.run(['open', f'http://localhost:{DQD_HTTP_PORT}/'])
 
