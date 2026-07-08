@@ -27,11 +27,13 @@ Exit status is non-zero if any hard MISSING/BAD is found (advisories don't fail)
 Target columns are validated against the pinned OMOP IG *package*
 (hl7.fhir.uv.omop#<ig-version>), not the transient fsh-generated build output, so
 the check runs against a known IG version (default 1.0.0) regardless of what a
-prior build_profiles.py run may have written into fsh-generated.
+prior build_profiles.py run may have written into fsh-generated. Pass
+--local-omop-dir to validate against the locally-built fsh-generated SDs instead
+(reflects uncommitted OMOP table edits, but is version-unpinned).
 
 Usage:
     python3 verify_map_conformance.py [--fhir-version r5|r4] [--ig-version 1.0.0]
-                                      [--ig-dir PATH]
+                                      [--local-omop-dir [PATH]] [--ig-dir PATH]
 
 Defaults: r5 (hl7.fhir.r5.core#5.0.0), OMOP IG 1.0.0 (hl7.fhir.uv.omop#1.0.0),
 maps from ../fhir-omop-ig relative to this file.
@@ -145,6 +147,11 @@ def main():
                     help="OMOP IG version to validate target columns against "
                          "(default: 1.0.0). Pins to the hl7.fhir.uv.omop#<ver> "
                          "package, not the transient fsh-generated build output.")
+    ap.add_argument("--local-omop-dir", nargs="?", const="",
+                    help="Validate target columns against locally-built OMOP SDs "
+                         "instead of the pinned package. Bare flag uses the "
+                         "checkout's fsh-generated/resources; or pass a dir. "
+                         "Reflects uncommitted OMOP table edits but is version-unpinned.")
     ap.add_argument("--ig-dir", default=os.path.join(here, "..", "fhir-omop-ig"),
                     help="fhir-omop-ig checkout, source of the FML maps (default: ../fhir-omop-ig)")
     ap.add_argument("--packages-dir", default=os.path.expanduser("~/.fhir/packages"),
@@ -152,12 +159,20 @@ def main():
     args = ap.parse_args()
 
     core_dir = os.path.join(args.packages_dir, CORE_PACKAGE[args.fhir_version], "package")
-    omop_pkg = f"{OMOP_PACKAGE}#{args.ig_version}"
-    omop_dir = os.path.join(args.packages_dir, omop_pkg, "package")
     maps_dir = os.path.join(args.ig_dir, "input", "maps")
 
+    if args.local_omop_dir is not None:
+        omop_dir = args.local_omop_dir or os.path.join(args.ig_dir, "fsh-generated", "resources")
+        omop_label = f"local OMOP SDs ({omop_dir})"
+        omop_desc = "local fsh-generated (version-unpinned)"
+    else:
+        omop_pkg = f"{OMOP_PACKAGE}#{args.ig_version}"
+        omop_dir = os.path.join(args.packages_dir, omop_pkg, "package")
+        omop_label = f"OMOP package {omop_pkg}"
+        omop_desc = omop_pkg
+
     for label, d in (("core package", core_dir),
-                     (f"OMOP package {omop_pkg}", omop_dir),
+                     (omop_label, omop_dir),
                      ("maps", maps_dir)):
         if not os.path.isdir(d):
             sys.exit(f"error: {label} directory not found: {d}")
@@ -167,7 +182,7 @@ def main():
         sys.exit(f"error: no .fml maps in {maps_dir}")
 
     print(f"Verifying {len(maps)} maps against {CORE_PACKAGE[args.fhir_version]} "
-          f"+ {omop_pkg}\n")
+          f"+ {omop_desc}\n")
     total_hard = 0
     for mapf in maps:
         hard, advisory = verify_map(mapf, core_dir, omop_dir)
