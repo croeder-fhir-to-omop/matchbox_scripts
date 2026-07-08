@@ -80,6 +80,7 @@ PYTEST           = [SCRIPTS_DIR / 'env' / 'bin' / 'python3', '-m', 'pytest']
 ETL_REPORT       = SCRIPTS_DIR / 'etl_report_test.html'
 ETL_REPORT_SAMPLES = SCRIPTS_DIR / 'etl_report_sample.html'
 UNIT_TEST_REPORT = SCRIPTS_DIR / 'unit_test_report.html'
+RELEASE_REPORT   = SCRIPTS_DIR / 'release_conformance_report.html'
 
 STEPS = ['ig', 'mvn', 'docker', 'release', 'start', 'restart', 'stop', 'down', 'etl', 'test']
 DEFAULT_STEPS = ['ig', 'mvn', 'docker', 'restart', 'etl', 'test']
@@ -216,6 +217,61 @@ def step_ig():
         print(f'\n>>> cp {PACKAGE_SRC} {PACKAGE_DST}')
         shutil.copy2(PACKAGE_SRC, PACKAGE_DST)
         print('IG package copied.')
+        # Generate the release-conformance report against the FML/SDs just built.
+        # Inside the source-checkout block so it reflects the built maps, not the
+        # restored working tree. Copied into the served /omop dir later, in step_etl
+        # (restart wipes omop-db, so an earlier copy would not survive).
+        _generate_release_report()
+
+
+def _generate_release_report():
+    """Run the host-side static conformance checks and render a self-contained
+    HTML report next to the ETL reports. Findings never fail the build."""
+    import html as _html
+    print('\n=== Generating release-conformance report ===')
+    sections = [
+        ('Structure maps vs R5 StructureDefinitions',
+         [sys.executable, 'verify_map_conformance.py']),
+        ('Test-data release scan',
+         [sys.executable, 'check_testdata_release.py']),
+        ('Sample fixtures r4/r5 pairing',
+         [sys.executable, 'check_testdata_release.py',
+          '--pair', 'sample_fixtures_r4', 'sample_fixtures_r5']),
+    ]
+    parts, any_findings = [], False
+    for title, cmd in sections:
+        p = subprocess.run([str(c) for c in cmd], cwd=str(SCRIPTS_DIR),
+                           capture_output=True, text=True)
+        out = (p.stdout or '') + (p.stderr or '')
+        ok = p.returncode == 0
+        any_findings = any_findings or not ok
+        badge = 'PASS' if ok else 'FINDINGS'
+        cls = 'pass' if ok else 'findings'
+        print(f'  [{badge}] {title}')
+        parts.append(
+            f'<section><h2>{_html.escape(title)} '
+            f'<span class="badge {cls}">{badge}</span></h2>'
+            f'<p class="cmd">{_html.escape(" ".join(str(c) for c in cmd))}</p>'
+            f'<pre>{_html.escape(out.strip())}</pre></section>')
+
+    top = 'FINDINGS' if any_findings else 'PASS'
+    top_cls = 'findings' if any_findings else 'pass'
+    doc = (
+        '<!doctype html><html><head><meta charset="utf-8">'
+        '<title>Release conformance report</title><style>'
+        'body{font:14px/1.5 -apple-system,Segoe UI,sans-serif;margin:2rem;color:#222}'
+        'h1{font-size:1.4rem}h2{font-size:1.05rem;margin-top:1.6rem}'
+        '.badge{font-size:.72rem;padding:.12rem .5rem;border-radius:.7rem;color:#fff;vertical-align:middle}'
+        '.pass{background:#2e7d32}.findings{background:#c62828}'
+        '.cmd{color:#666;font-family:monospace;margin:.2rem 0}'
+        'pre{background:#f5f5f5;padding:1rem;overflow-x:auto;border-radius:4px;white-space:pre-wrap}'
+        '</style></head><body>'
+        f'<h1>Release conformance <span class="badge {top_cls}">{top}</span></h1>'
+        '<p>Static checks: FML maps vs R5 core StructureDefinitions, and test-data '
+        'FHIR-release classification. Host-side; independent of the loaded matchbox IG.</p>'
+        + ''.join(parts) + '</body></html>')
+    RELEASE_REPORT.write_text(doc)
+    print(f'  wrote {RELEASE_REPORT.name} ({top})')
 
 
 def step_mvn():
@@ -404,6 +460,12 @@ def step_etl():
         run(['docker', 'exec', DQD_CONTAINER, 'cp', tmp_report, '/omop/' + local_report.name])
         print(f'\n--- Report: {local_report.name} ---')
         _analyze_report(local_report)
+    # Serve the release-conformance report (generated in step_ig) alongside the ETL
+    # reports. Copied here because restart wipes omop-db after step_ig ran.
+    if RELEASE_REPORT.exists():
+        subprocess.run(['docker', 'cp', str(RELEASE_REPORT),
+                        f'{DQD_CONTAINER}:/omop/{RELEASE_REPORT.name}'], check=False)
+        print(f'--- Served: {RELEASE_REPORT.name} ---')
     if platform.system() == 'Darwin':
         subprocess.run(['open', f'http://localhost:{DQD_HTTP_PORT}/'])
 
