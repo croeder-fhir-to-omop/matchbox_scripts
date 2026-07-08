@@ -24,10 +24,17 @@ dependent; `effectiveDate` matches no choice at all.
 
 Exit status is non-zero if any hard MISSING/BAD is found (advisories don't fail).
 
-Usage:
-    python3 verify_map_conformance.py [--fhir-version r5|r4] [--ig-dir PATH]
+Target columns are validated against the pinned OMOP IG *package*
+(hl7.fhir.uv.omop#<ig-version>), not the transient fsh-generated build output, so
+the check runs against a known IG version (default 1.0.0) regardless of what a
+prior build_profiles.py run may have written into fsh-generated.
 
-Defaults: r5 (hl7.fhir.r5.core#5.0.0), IG at ../fhir-omop-ig relative to this file.
+Usage:
+    python3 verify_map_conformance.py [--fhir-version r5|r4] [--ig-version 1.0.0]
+                                      [--ig-dir PATH]
+
+Defaults: r5 (hl7.fhir.r5.core#5.0.0), OMOP IG 1.0.0 (hl7.fhir.uv.omop#1.0.0),
+maps from ../fhir-omop-ig relative to this file.
 """
 import argparse
 import glob
@@ -40,6 +47,7 @@ CORE_PACKAGE = {
     "r5": "hl7.fhir.r5.core#5.0.0",
     "r4": "hl7.fhir.r4.core#4.0.1",
 }
+OMOP_PACKAGE = "hl7.fhir.uv.omop"  # + '#<ig-version>'
 
 
 def load_elements(path):
@@ -133,17 +141,24 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--fhir-version", choices=CORE_PACKAGE, default="r5")
+    ap.add_argument("--ig-version", default="1.0.0",
+                    help="OMOP IG version to validate target columns against "
+                         "(default: 1.0.0). Pins to the hl7.fhir.uv.omop#<ver> "
+                         "package, not the transient fsh-generated build output.")
     ap.add_argument("--ig-dir", default=os.path.join(here, "..", "fhir-omop-ig"),
-                    help="fhir-omop-ig checkout (default: ../fhir-omop-ig)")
+                    help="fhir-omop-ig checkout, source of the FML maps (default: ../fhir-omop-ig)")
     ap.add_argument("--packages-dir", default=os.path.expanduser("~/.fhir/packages"),
                     help="FHIR package cache (default: ~/.fhir/packages)")
     args = ap.parse_args()
 
     core_dir = os.path.join(args.packages_dir, CORE_PACKAGE[args.fhir_version], "package")
+    omop_pkg = f"{OMOP_PACKAGE}#{args.ig_version}"
+    omop_dir = os.path.join(args.packages_dir, omop_pkg, "package")
     maps_dir = os.path.join(args.ig_dir, "input", "maps")
-    omop_dir = os.path.join(args.ig_dir, "fsh-generated", "resources")
 
-    for label, d in (("core package", core_dir), ("maps", maps_dir), ("OMOP SDs", omop_dir)):
+    for label, d in (("core package", core_dir),
+                     (f"OMOP package {omop_pkg}", omop_dir),
+                     ("maps", maps_dir)):
         if not os.path.isdir(d):
             sys.exit(f"error: {label} directory not found: {d}")
 
@@ -151,7 +166,8 @@ def main():
     if not maps:
         sys.exit(f"error: no .fml maps in {maps_dir}")
 
-    print(f"Verifying {len(maps)} maps against {CORE_PACKAGE[args.fhir_version]}\n")
+    print(f"Verifying {len(maps)} maps against {CORE_PACKAGE[args.fhir_version]} "
+          f"+ {omop_pkg}\n")
     total_hard = 0
     for mapf in maps:
         hard, advisory = verify_map(mapf, core_dir, omop_dir)

@@ -231,7 +231,8 @@ def _generate_release_report():
     print('\n=== Generating release-conformance report ===')
     sections = [
         ('Structure maps vs R5 StructureDefinitions',
-         [sys.executable, 'verify_map_conformance.py']),
+         [sys.executable, 'verify_map_conformance.py',
+          '--fhir-version', 'r5', '--ig-version', '1.0.0']),
         ('Test-data release scan',
          [sys.executable, 'check_testdata_release.py']),
         ('Sample fixtures r4/r5 pairing',
